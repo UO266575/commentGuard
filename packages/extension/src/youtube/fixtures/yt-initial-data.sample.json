@@ -1,0 +1,46 @@
+{
+  "_comment": "Trimmed from a real watch page response on 2026-10-14; only the nesting path that matters for findInitialCommentsContinuation is preserved.",
+  "engagementPanels": [
+    {
+      "engagementPanelSectionListRenderer": {
+        "panelIdentifier": "engagement-panel-comments-section",
+        "header": {
+          "engagementPanelTitleHeaderRenderer": {
+            "menu": {
+              "sortFilterSubMenuRenderer": {
+                "subMenuItems": [
+                  {
+                    "title": "Top",
+                    "selected": true,
+                    "serviceEndpoint": {
+                      "commandMetadata": {
+                        "webCommandMetadata": { "sendPost": true, "apiUrl": "/youtubei/v1/next" }
+                      },
+                      "continuationCommand": {
+                        "token": "SAMPLE_TOP_SORT_TOKEN",
+                        "request": "CONTINUATION_REQUEST_TYPE_WATCH_NEXT"
+                      }
+                    }
+                  },
+                  {
+                    "title": "Newest",
+                    "selected": false,
+                    "serviceEndpoint": {
+                      "commandMetadata": {
+                        "webCommandMetadata": { "sendPost": true, "apiUrl": "/youtubei/v1/next" }
+                      },
+                      "continuationCommand": {
+                        "token": "SAMPLE_NEWEST_SORT_TOKEN",
+                        "request": "CONTINUATION_REQUEST_TYPE_WATCH_NEXT"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

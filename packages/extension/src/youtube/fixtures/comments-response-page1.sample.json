@@ -1,0 +1,73 @@
+{
+  "_comment": "Hand-trimmed from a real /youtubei/v1/next response on 2026-10-14. Keeps the exact key names and nesting that parseCommentsResponse relies on; unrelated fields (avatars, tracking params, styling) were dropped.",
+  "onResponseReceivedEndpoints": [
+    {
+      "reloadContinuationItemsCommand": {
+        "continuationItems": [{ "commentsHeaderRenderer": { "commentsCount": { "simpleText": "3" } } }]
+      }
+    },
+    {
+      "reloadContinuationItemsCommand": {
+        "continuationItems": [
+          { "commentThreadRenderer": { "commentViewModel": { "commentKey": "c1" } } },
+          { "commentThreadRenderer": { "commentViewModel": { "commentKey": "c2" } } },
+          {
+            "continuationItemRenderer": {
+              "trigger": "CONTINUATION_TRIGGER_ON_ITEM_SHOWN",
+              "continuationEndpoint": {
+                "commandMetadata": { "webCommandMetadata": { "sendPost": true, "apiUrl": "/youtubei/v1/next" } },
+                "continuationCommand": { "token": "SAMPLE_PAGE_2_TOKEN", "request": "CONTINUATION_REQUEST_TYPE_WATCH_NEXT" }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "frameworkUpdates": {
+    "entityBatchUpdate": {
+      "mutations": [
+        {
+          "entityKey": "c1",
+          "type": "ENTITY_MUTATION_TYPE_REPLACE",
+          "payload": {
+            "commentEntityPayload": {
+              "properties": { "commentId": "c1", "content": { "content": "Great video!" }, "replyLevel": 0 },
+              "author": { "displayName": "@alice" },
+              "toolbar": { "replyCount": "1" }
+            }
+          }
+        },
+        {
+          "entityKey": "c1-reply-1",
+          "type": "ENTITY_MUTATION_TYPE_REPLACE",
+          "payload": {
+            "commentEntityPayload": {
+              "properties": { "commentId": "c1-reply-1", "content": { "content": "Thanks!" }, "replyLevel": 1 },
+              "author": { "displayName": "@creator" },
+              "toolbar": { "replyCount": "0" }
+            }
+          }
+        },
+        {
+          "entityKey": "c2",
+          "type": "ENTITY_MUTATION_TYPE_REPLACE",
+          "payload": {
+            "commentEntityPayload": {
+              "properties": { "commentId": "c2", "content": { "content": "First!" }, "replyLevel": 0 },
+              "author": { "displayName": "@bob" },
+              "toolbar": { "replyCount": "0" }
+            }
+          }
+        },
+        {
+          "entityKey": "c2-shared",
+          "type": "ENTITY_MUTATION_TYPE_REPLACE",
+          "payload": {
+            "commentSharedEntityPayload": { "commentId": "c2" }
+          }
+        }
+      ]
+    }
+  }
+}
