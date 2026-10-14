@@ -1,0 +1,51 @@
+.cg-root {
+  font-family: "Roboto", Arial, sans-serif;
+  color: var(--yt-spec-text-primary, #0f0f0f);
+  padding: 12px 0;
+}
+
+.cg-intro {
+  font-size: 14px;
+  margin: 0 0 12px;
+}
+
+.cg-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.cg-button {
+  font: inherit;
+  font-weight: 500;
+  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: 18px;
+  border: 1px solid var(--yt-spec-10-percent-layer, #ccc);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.cg-button--primary {
+  background: var(--yt-spec-call-to-action, #065fd4);
+  border-color: transparent;
+  color: #fff;
+}
+
+.cg-error {
+  color: #cc0000;
+  font-size: 14px;
+}
+
+.cg-comment-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cg-comment {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--yt-spec-10-percent-layer, #eee);
+  font-size: 14px;
+  line-height: 1.4;
+}
