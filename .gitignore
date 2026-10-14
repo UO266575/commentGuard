@@ -1,0 +1,23 @@
+node_modules/
+dist/
+.output/
+.wxt/
+*.local
+.env
+.env.*
+!.env.example
+
+# Logs
+npm-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+coverage/
