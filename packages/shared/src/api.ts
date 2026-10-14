@@ -1,4 +1,4 @@
-import type { Tab } from "./categories";
+import type { Tab } from "./categories.js";
 
 // A top-level comment as read from YouTube, before classification.
 export interface RawComment {

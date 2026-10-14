@@ -7,16 +7,26 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:studio": "drizzle-kit studio",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
     "@comment-classificator/shared": "workspace:*",
     "@hono/node-server": "^1.13.7",
-    "hono": "^4.6.14"
+    "@hono/zod-validator": "^0.9.1",
+    "drizzle-orm": "^0.45.4",
+    "google-auth-library": "^11.3.0",
+    "hono": "^4.6.14",
+    "jose": "^6.2.12",
+    "postgres": "^3.4.9",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "drizzle-kit": "^0.31.11",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
