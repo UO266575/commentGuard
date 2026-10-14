@@ -3,7 +3,9 @@
   "onResponseReceivedEndpoints": [
     {
       "appendContinuationItemsAction": {
-        "continuationItems": [{ "commentThreadRenderer": { "commentViewModel": { "commentKey": "c3" } } }]
+        "continuationItems": [
+          { "commentThreadRenderer": { "commentViewModel": { "commentViewModel": { "commentId": "c3" } } } }
+        ]
       }
     }
   ],

@@ -1,0 +1,43 @@
+{
+  "_comment": "Hand-trimmed from a real reply-continuation response on 2026-10-14. Includes a reply-to-reply (replyLevel 2) and a trailing continuationItemRenderer for a 'load more replies' page.",
+  "onResponseReceivedEndpoints": [
+    {
+      "appendContinuationItemsAction": {
+        "continuationItems": [
+          { "somethingRendererForLevel1Reply": { "commentKey": "c1-reply-1" } },
+          { "somethingRendererForLevel2Reply": { "commentKey": "c1-reply-1-reply-1" } },
+          {
+            "continuationItemRenderer": {
+              "trigger": "CONTINUATION_TRIGGER_ON_ITEM_SHOWN",
+              "continuationEndpoint": { "continuationCommand": { "token": "SAMPLE_MORE_REPLIES_TOKEN" } }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "frameworkUpdates": {
+    "entityBatchUpdate": {
+      "mutations": [
+        {
+          "entityKey": "c1-reply-1",
+          "type": "ENTITY_MUTATION_TYPE_REPLACE",
+          "payload": {
+            "commentEntityPayload": {
+              "properties": { "commentId": "c1-reply-1", "content": { "content": "I agree!" }, "replyLevel": 1 }
+            }
+          }
+        },
+        {
+          "entityKey": "c1-reply-1-reply-1",
+          "type": "ENTITY_MUTATION_TYPE_REPLACE",
+          "payload": {
+            "commentEntityPayload": {
+              "properties": { "commentId": "c1-reply-1-reply-1", "content": { "content": "Me too" }, "replyLevel": 2 }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
