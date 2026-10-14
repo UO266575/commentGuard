@@ -1,2 +1,2 @@
-export * from "./categories";
-export * from "./api";
+export * from "./categories.js";
+export * from "./api.js";

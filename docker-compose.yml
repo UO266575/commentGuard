@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: comment-classificator-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: comment_classificator
+      POSTGRES_PASSWORD: comment_classificator
+      POSTGRES_DB: comment_classificator
+    ports:
+      - "5432:5432"
+    volumes:
+      - comment-classificator-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  comment-classificator-postgres-data:
