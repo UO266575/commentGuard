@@ -1,19 +1,21 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
-import { UNCLASSIFIED, type ClassifyResponse } from "@comment-classificator/shared";
+import { CONFIDENCE_THRESHOLD, JEV_MODEL_VERSION, UNCLASSIFIED, type ClassifyResponse } from "@comment-classificator/shared";
 import type { AppEnv } from "./app-env.js";
 import type { GoogleTokenVerifier } from "./auth/google.js";
 import { requireSession } from "./auth/middleware.js";
 import { createSessionToken } from "./auth/session.js";
-import { getCachedClassifications, storeClassifications } from "./cache/repository.js";
+import { getCachedClassifications, storeClassifications, type CachedClassification } from "./cache/repository.js";
 import type { Database } from "./db/client.js";
+import type { JevClient } from "./jev/client.js";
 import { consumeQuota, getRemainingQuota } from "./quota/repository.js";
 import { findOrCreateUser } from "./users/repository.js";
 
 export interface AppDependencies {
   db: Database;
   googleVerifier: GoogleTokenVerifier;
+  jevClient: JevClient;
   monthlyQuota: number;
 }
 
@@ -43,11 +45,9 @@ export function createApp(deps: AppDependencies) {
     return c.json({ sessionToken });
   });
 
-  // Stub: every uncached comment is marked "sin_clasificar" until Jev is wired up in a
-  // later phase. Already exercises the real flow end to end: auth, quota and cache.
   app.post("/api/classify", requireSession, zValidator("json", classifyRequestSchema), async (c) => {
     const userGoogleSub = c.get("userGoogleSub");
-    const { comments } = c.req.valid("json");
+    const { videoTitle, comments } = c.req.valid("json");
 
     const cached = await getCachedClassifications(
       deps.db,
@@ -64,16 +64,27 @@ export function createApp(deps: AppDependencies) {
     }
 
     if (uncached.length > 0) {
-      await storeClassifications(
-        deps.db,
-        uncached.map((comment) => ({
-          commentId: comment.id,
-          category: UNCLASSIFIED,
-          confidence: 0,
-          modelVersion: "stub",
-        })),
+      const newEntries: CachedClassification[] = await Promise.all(
+        uncached.map(async (comment) => {
+          try {
+            const { category, confidence } = await deps.jevClient.classify({ videoTitle, comment: comment.text });
+            // See docs/ESPECIFICACION.md: below the confidence threshold, treat as unclassified.
+            return {
+              commentId: comment.id,
+              category: confidence >= CONFIDENCE_THRESHOLD ? category : UNCLASSIFIED,
+              confidence,
+              modelVersion: JEV_MODEL_VERSION,
+            };
+          } catch {
+            // A comment that Jev couldn't classify (after retries) also goes to "Sin clasificar".
+            return { commentId: comment.id, category: UNCLASSIFIED, confidence: 0, modelVersion: JEV_MODEL_VERSION };
+          }
+        }),
       );
+
+      await storeClassifications(deps.db, newEntries);
       await consumeQuota(deps.db, userGoogleSub, uncached.length);
+      for (const entry of newEntries) cached.set(entry.commentId, entry);
     }
 
     const response: ClassifyResponse = {

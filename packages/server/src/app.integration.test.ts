@@ -3,11 +3,13 @@ import { createApp } from "./app.js";
 import type { GoogleTokenVerifier } from "./auth/google.js";
 import { createDatabase, type DatabaseHandle } from "./db/client.js";
 import { testDatabaseUrl, truncateAll } from "./db/test-db.js";
+import type { JevClient } from "./jev/client.js";
 import { getRemainingQuota } from "./quota/repository.js";
 
 const url = testDatabaseUrl();
 const fakeIdentity = { googleSub: "sub-1", email: "person@example.com" };
 const fakeVerifier: GoogleTokenVerifier = { verify: async () => fakeIdentity };
+const fakeJevClient: JevClient = { classify: async () => ({ category: "negativo", confidence: 0.82 }) };
 
 async function login(app: ReturnType<typeof createApp>) {
   const res = await app.request("/api/auth/google", {
@@ -31,7 +33,7 @@ describe.skipIf(!url)("auth + classify flow", () => {
   afterAll(() => handle.close());
 
   it("logs in with a verified Google token and creates the user", async () => {
-    const app = createApp({ db: handle.db, googleVerifier: fakeVerifier, monthlyQuota: 1000 });
+    const app = createApp({ db: handle.db, googleVerifier: fakeVerifier, jevClient: fakeJevClient, monthlyQuota: 1000 });
 
     const res = await app.request("/api/auth/google", {
       method: "POST",
@@ -45,7 +47,7 @@ describe.skipIf(!url)("auth + classify flow", () => {
 
   it("rejects a Google token that fails verification", async () => {
     const rejecting: GoogleTokenVerifier = { verify: async () => Promise.reject(new Error("invalid")) };
-    const app = createApp({ db: handle.db, googleVerifier: rejecting, monthlyQuota: 1000 });
+    const app = createApp({ db: handle.db, googleVerifier: rejecting, jevClient: fakeJevClient, monthlyQuota: 1000 });
 
     const res = await app.request("/api/auth/google", {
       method: "POST",
@@ -57,7 +59,7 @@ describe.skipIf(!url)("auth + classify flow", () => {
   });
 
   it("rejects /api/classify without a session", async () => {
-    const app = createApp({ db: handle.db, googleVerifier: fakeVerifier, monthlyQuota: 1000 });
+    const app = createApp({ db: handle.db, googleVerifier: fakeVerifier, jevClient: fakeJevClient, monthlyQuota: 1000 });
 
     const res = await app.request("/api/classify", {
       method: "POST",
@@ -68,8 +70,8 @@ describe.skipIf(!url)("auth + classify flow", () => {
     expect(res.status).toBe(401);
   });
 
-  it("classifies new comments as sin_clasificar (stub) and consumes quota", async () => {
-    const app = createApp({ db: handle.db, googleVerifier: fakeVerifier, monthlyQuota: 1000 });
+  it("classifies new comments using Jev and consumes quota", async () => {
+    const app = createApp({ db: handle.db, googleVerifier: fakeVerifier, jevClient: fakeJevClient, monthlyQuota: 1000 });
     const sessionToken = await login(app);
 
     const res = await app.request("/api/classify", {
@@ -88,15 +90,51 @@ describe.skipIf(!url)("auth + classify flow", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
       results: [
-        { commentId: "c1", category: "sin_clasificar", confidence: 0 },
-        { commentId: "c2", category: "sin_clasificar", confidence: 0 },
+        { commentId: "c1", category: "negativo", confidence: 0.82 },
+        { commentId: "c2", category: "negativo", confidence: 0.82 },
       ],
     });
     expect(await getRemainingQuota(handle.db, fakeIdentity.googleSub, 1000)).toBe(998);
   });
 
-  it("does not spend quota again on a comment that's already cached", async () => {
-    const app = createApp({ db: handle.db, googleVerifier: fakeVerifier, monthlyQuota: 1000 });
+  it("treats a low-confidence answer as sin_clasificar", async () => {
+    const lowConfidence: JevClient = { classify: async () => ({ category: "toxico", confidence: 0.3 }) };
+    const app = createApp({ db: handle.db, googleVerifier: fakeVerifier, jevClient: lowConfidence, monthlyQuota: 1000 });
+    const sessionToken = await login(app);
+
+    const res = await app.request("/api/classify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({ videoId: "v1", videoTitle: "t", comments: [{ id: "c1", text: "mmm" }] }),
+    });
+
+    expect(await res.json()).toEqual({ results: [{ commentId: "c1", category: "sin_clasificar", confidence: 0.3 }] });
+  });
+
+  it("treats a Jev failure (after retries) as sin_clasificar instead of failing the request", async () => {
+    const failing: JevClient = { classify: async () => Promise.reject(new Error("Jev respondió con el estado 500")) };
+    const app = createApp({ db: handle.db, googleVerifier: fakeVerifier, jevClient: failing, monthlyQuota: 1000 });
+    const sessionToken = await login(app);
+
+    const res = await app.request("/api/classify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({ videoId: "v1", videoTitle: "t", comments: [{ id: "c1", text: "mmm" }] }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ results: [{ commentId: "c1", category: "sin_clasificar", confidence: 0 }] });
+  });
+
+  it("does not spend quota again or call Jev for a comment that's already cached", async () => {
+    let callCount = 0;
+    const countingJevClient: JevClient = {
+      classify: async () => {
+        callCount += 1;
+        return { category: "negativo", confidence: 0.82 };
+      },
+    };
+    const app = createApp({ db: handle.db, googleVerifier: fakeVerifier, jevClient: countingJevClient, monthlyQuota: 1000 });
     const sessionToken = await login(app);
     const request = {
       method: "POST" as const,
@@ -107,11 +145,12 @@ describe.skipIf(!url)("auth + classify flow", () => {
     await app.request("/api/classify", request);
     await app.request("/api/classify", request);
 
+    expect(callCount).toBe(1);
     expect(await getRemainingQuota(handle.db, fakeIdentity.googleSub, 1000)).toBe(999);
   });
 
   it("returns 402 once the monthly quota is exhausted", async () => {
-    const app = createApp({ db: handle.db, googleVerifier: fakeVerifier, monthlyQuota: 1 });
+    const app = createApp({ db: handle.db, googleVerifier: fakeVerifier, jevClient: fakeJevClient, monthlyQuota: 1 });
     const sessionToken = await login(app);
     const classify = (comments: Array<{ id: string; text: string }>) =>
       app.request("/api/classify", {

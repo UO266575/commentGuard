@@ -23,6 +23,10 @@ export function getSessionSecret(): string {
   return required("SESSION_SECRET");
 }
 
+export function getJevApiKey(): string {
+  return required("JEV_API_KEY");
+}
+
 // Provisional default; the real plan size is still an open question — see
 // docs/ESPECIFICACION.md, "Modelo de negocio y puntos abiertos".
 export function getMonthlyCommentQuota(): number {
