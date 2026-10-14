@@ -9,8 +9,30 @@
     {
       "reloadContinuationItemsCommand": {
         "continuationItems": [
-          { "commentThreadRenderer": { "commentViewModel": { "commentKey": "c1" } } },
-          { "commentThreadRenderer": { "commentViewModel": { "commentKey": "c2" } } },
+          {
+            "commentThreadRenderer": {
+              "commentViewModel": { "commentViewModel": { "commentId": "c1" } },
+              "replies": {
+                "commentRepliesRenderer": {
+                  "subThreads": [
+                    {
+                      "continuationItemRenderer": {
+                        "trigger": "CONTINUATION_TRIGGER_ON_ITEM_SHOWN",
+                        "continuationEndpoint": {
+                          "continuationCommand": { "token": "SAMPLE_C1_REPLIES_TOKEN" }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "commentThreadRenderer": {
+              "commentViewModel": { "commentViewModel": { "commentId": "c2" } }
+            }
+          },
           {
             "continuationItemRenderer": {
               "trigger": "CONTINUATION_TRIGGER_ON_ITEM_SHOWN",

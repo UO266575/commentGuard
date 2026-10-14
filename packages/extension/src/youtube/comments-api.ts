@@ -5,8 +5,19 @@ import type { RawComment } from "@comment-classificator/shared";
 // comentarios". Keep all the parsing logic in this file so a breakage is easy to find.
 const COMMENTS_ENDPOINT_PATH = "/youtubei/v1/next";
 
+export interface TopLevelComment extends RawComment {
+  // Raw as YouTube formats it ("985", "4.8M"...), for display only.
+  replyCount: string;
+  repliesContinuation: string | null;
+}
+
 export interface CommentsPage {
-  comments: RawComment[];
+  comments: TopLevelComment[];
+  nextContinuation: string | null;
+}
+
+export interface RepliesPage {
+  replies: RawComment[];
   nextContinuation: string | null;
 }
 
@@ -15,6 +26,9 @@ interface CommentEntityPayload {
     commentId?: string;
     content?: { content?: string };
     replyLevel?: number;
+  };
+  toolbar?: {
+    replyCount?: string;
   };
 }
 
@@ -37,46 +51,91 @@ function findAll<T>(value: unknown, key: string, results: T[] = []): T[] {
   return results;
 }
 
-interface ContinuationAction {
-  continuationItems?: Array<{
-    continuationItemRenderer?: {
-      continuationEndpoint?: { continuationCommand?: { token?: string } };
-    };
-  }>;
+interface ContinuationEndpoint {
+  continuationCommand?: { token?: string };
 }
 
-// Unlike the comment lookup, this one is deliberately NOT a blind recursive search: a
-// `continuationItemRenderer` also shows up nested under each comment's own "replies"
-// thread, and that reply continuation must not be mistaken for the next page of
-// top-level comments. Only the action-level continuationItems array (the direct sibling
-// list of commentThreadRenderer entries) holds the real pagination token.
-function findNextPageContinuation(response: unknown): string | null {
+interface CommentThreadItem {
+  commentThreadRenderer?: {
+    commentViewModel?: { commentViewModel?: { commentId?: string } };
+    replies?: {
+      commentRepliesRenderer?: {
+        subThreads?: Array<{ continuationItemRenderer?: { continuationEndpoint?: ContinuationEndpoint } }>;
+      };
+    };
+  };
+  continuationItemRenderer?: { continuationEndpoint?: ContinuationEndpoint };
+}
+
+// Finds the one flat array of per-comment (or per-reply) thread items for this page
+// (verified against a live watch page on 2026-10-14): a list of content entries followed
+// by, at most, one continuationItemRenderer for the next page. The first load of
+// top-level comments carries an extra, earlier action with only the comments-count
+// header — real content is always in the LAST action, for both top-level and replies
+// responses, so that's what this takes instead of pattern-matching the item shape (which
+// differs between the two: commentThreadRenderer for top-level, something else for
+// replies). Deliberately not a blind recursive search either way — a
+// commentThreadRenderer's own reply continuation lives at the same key name nested one
+// level down, inside its own "replies" thread, and must not be confused with this
+// page-level "next batch" continuation.
+function findThreadItems(response: unknown): CommentThreadItem[] {
   const endpoints = findAll<Record<string, unknown>>(response, "onResponseReceivedEndpoints").flat();
+  const lastEndpoint = endpoints[endpoints.length - 1];
 
-  for (const endpoint of endpoints) {
-    const action = (endpoint.reloadContinuationItemsCommand ??
-      endpoint.appendContinuationItemsAction) as ContinuationAction | undefined;
+  const action = (lastEndpoint?.["reloadContinuationItemsCommand"] ?? lastEndpoint?.["appendContinuationItemsAction"]) as
+    | { continuationItems?: CommentThreadItem[] }
+    | undefined;
 
-    const paginationItem = action?.continuationItems?.find((item) => item.continuationItemRenderer);
-    const token = paginationItem?.continuationItemRenderer?.continuationEndpoint?.continuationCommand?.token;
-    if (token) return token;
-  }
+  return action?.continuationItems ?? [];
+}
 
-  return null;
+function findNextPageContinuation(items: CommentThreadItem[]): string | null {
+  const paginationItem = items.find((item) => item.continuationItemRenderer);
+  return paginationItem?.continuationItemRenderer?.continuationEndpoint?.continuationCommand?.token ?? null;
 }
 
 export function parseCommentsResponse(response: unknown): CommentsPage {
-  const payloads = findAll<CommentEntityPayload>(response, "commentEntityPayload");
+  const items = findThreadItems(response);
 
-  const comments: RawComment[] = payloads
+  const repliesContinuationById = new Map<string, string | null>();
+  for (const item of items) {
+    const thread = item.commentThreadRenderer;
+    const commentId = thread?.commentViewModel?.commentViewModel?.commentId;
+    if (!commentId) continue;
+
+    const token =
+      thread?.replies?.commentRepliesRenderer?.subThreads?.[0]?.continuationItemRenderer?.continuationEndpoint
+        ?.continuationCommand?.token ?? null;
+    repliesContinuationById.set(commentId, token);
+  }
+
+  const payloads = findAll<CommentEntityPayload>(response, "commentEntityPayload");
+  const comments: TopLevelComment[] = payloads
     .filter((payload) => payload.properties?.replyLevel === 0)
-    .map((payload) => ({
-      id: payload.properties?.commentId ?? "",
-      text: payload.properties?.content?.content ?? "",
-    }))
+    .map((payload) => {
+      const id = payload.properties?.commentId ?? "";
+      return {
+        id,
+        text: payload.properties?.content?.content ?? "",
+        replyCount: payload.toolbar?.replyCount ?? "0",
+        repliesContinuation: repliesContinuationById.get(id) ?? null,
+      };
+    })
     .filter((comment) => comment.id !== "");
 
-  return { comments, nextContinuation: findNextPageContinuation(response) };
+  return { comments, nextContinuation: findNextPageContinuation(items) };
+}
+
+// Replies are only fetched when the user expands a comment, and never classified — see
+// docs/ESPECIFICACION.md, "Respuestas: solo se clasifica el comentario principal".
+export function parseRepliesResponse(response: unknown): RepliesPage {
+  const payloads = findAll<CommentEntityPayload>(response, "commentEntityPayload");
+  const replies: RawComment[] = payloads
+    .filter((payload) => (payload.properties?.replyLevel ?? 0) > 0)
+    .map((payload) => ({ id: payload.properties?.commentId ?? "", text: payload.properties?.content?.content ?? "" }))
+    .filter((reply) => reply.id !== "");
+
+  return { replies, nextContinuation: findNextPageContinuation(findThreadItems(response)) };
 }
 
 export interface FetchCommentsPageOptions {
@@ -107,6 +166,16 @@ export async function fetchCommentsPage({
   return response.json();
 }
 
+export async function fetchReplies(
+  continuation: string,
+  apiKey: string,
+  context: unknown,
+  fetchImpl: typeof fetch = fetch,
+): Promise<RepliesPage> {
+  const response = await fetchCommentsPage({ continuation, apiKey, context, fetchImpl });
+  return parseRepliesResponse(response);
+}
+
 export interface FetchTopLevelCommentsOptions {
   apiKey: string;
   context: unknown;
@@ -117,14 +186,16 @@ export interface FetchTopLevelCommentsOptions {
 
 // Yields comments in the ~20-per-call batches YouTube returns them in, stopping once
 // `maxComments` is reached or YouTube runs out of pages — see docs/ESPECIFICACION.md,
-// "Límite inicial: los 300 comentarios principales más relevantes por vídeo".
+// "Límite inicial: los 300 comentarios principales más relevantes por vídeo". Returns the
+// leftover continuation token (or null if YouTube truly ran out) so a "Cargar más" button
+// can resume from exactly where this call stopped.
 export async function* fetchTopLevelComments({
   apiKey,
   context,
   initialContinuation,
   maxComments = 300,
   fetchImpl = fetch,
-}: FetchTopLevelCommentsOptions): AsyncGenerator<RawComment[]> {
+}: FetchTopLevelCommentsOptions): AsyncGenerator<TopLevelComment[], string | null> {
   let continuation: string | null = initialContinuation;
   let fetched = 0;
 
@@ -141,4 +212,6 @@ export async function* fetchTopLevelComments({
 
     continuation = page.nextContinuation;
   }
+
+  return continuation;
 }

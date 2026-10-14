@@ -11,6 +11,6 @@ export function testDatabaseUrl(): string | undefined {
 
 export async function truncateAll(handle: DatabaseHandle): Promise<void> {
   await handle.db.execute(
-    sql`TRUNCATE TABLE quota_usage, comment_classification_cache, users RESTART IDENTITY CASCADE`,
+    sql`TRUNCATE TABLE quota_usage, comment_classification_cache, comment_corrections, users RESTART IDENTITY CASCADE`,
   );
 }

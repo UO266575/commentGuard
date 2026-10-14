@@ -7,7 +7,9 @@ import type { GoogleTokenVerifier } from "./auth/google.js";
 import { requireSession } from "./auth/middleware.js";
 import { createSessionToken } from "./auth/session.js";
 import { getCachedClassifications, storeClassifications, type CachedClassification } from "./cache/repository.js";
+import { recordCorrection } from "./corrections/repository.js";
 import type { Database } from "./db/client.js";
+import { TAB_VALUES } from "./db/schema.js";
 import type { JevClient } from "./jev/client.js";
 import { consumeQuota, getRemainingQuota } from "./quota/repository.js";
 import { findOrCreateUser } from "./users/repository.js";
@@ -23,6 +25,15 @@ const classifyRequestSchema = z.object({
   videoId: z.string().min(1),
   videoTitle: z.string(),
   comments: z.array(z.object({ id: z.string().min(1), text: z.string() })),
+});
+
+const tabSchema = z.enum([...TAB_VALUES]);
+
+const correctionRequestSchema = z.object({
+  commentId: z.string().min(1),
+  originalCategory: tabSchema,
+  correctedCategory: tabSchema,
+  modelVersion: z.string().min(1),
 });
 
 export function createApp(deps: AppDependencies) {
@@ -99,6 +110,12 @@ export function createApp(deps: AppDependencies) {
     };
 
     return c.json(response);
+  });
+
+  // No quota check: correcting a classification isn't a new classification request.
+  app.post("/api/corrections", requireSession, zValidator("json", correctionRequestSchema), async (c) => {
+    await recordCorrection(deps.db, c.req.valid("json"));
+    return c.json({ status: "ok" }, 201);
   });
 
   return app;

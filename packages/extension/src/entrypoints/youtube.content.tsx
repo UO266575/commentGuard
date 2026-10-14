@@ -1,5 +1,5 @@
 import { render } from "preact";
-import { classifyVideoComments } from "../classification/pipeline";
+import { classifyVideoComments, fetchCommentReplies, submitCorrection } from "../classification/pipeline";
 import { App } from "../ui/App";
 import "../ui/styles.css";
 
@@ -35,7 +35,9 @@ export default defineContentScript({
               anchor?.style.removeProperty("display");
               ui.remove();
             }}
-            fetchClassifiedComments={() => classifyVideoComments(currentVideoId(), currentVideoTitle())}
+            fetchClassifiedComments={(continuation) => classifyVideoComments(currentVideoId(), currentVideoTitle(), continuation)}
+            fetchReplies={fetchCommentReplies}
+            submitCorrection={submitCorrection}
           />,
           uiContainer,
         );

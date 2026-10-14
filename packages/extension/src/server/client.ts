@@ -1,4 +1,4 @@
-import type { ClassifyRequest, ClassifyResponse } from "@comment-classificator/shared";
+import type { ClassifyRequest, ClassifyResponse, CorrectionRequest } from "@comment-classificator/shared";
 import { SERVER_BASE_URL } from "./config";
 
 export class UnauthenticatedError extends Error {}
@@ -29,4 +29,15 @@ export async function classifyComments(sessionToken: string, request: ClassifyRe
   if (!res.ok) throw new Error(`El servidor respondió con el estado ${res.status}.`);
 
   return (await res.json()) as ClassifyResponse;
+}
+
+export async function recordCorrection(sessionToken: string, correction: CorrectionRequest): Promise<void> {
+  const res = await fetch(`${SERVER_BASE_URL}/api/corrections`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessionToken}` },
+    body: JSON.stringify(correction),
+  });
+
+  if (res.status === 401) throw new UnauthenticatedError("La sesión ha caducado.");
+  if (!res.ok) throw new Error(`El servidor respondió con el estado ${res.status}.`);
 }
