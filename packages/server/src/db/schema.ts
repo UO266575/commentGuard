@@ -1,4 +1,4 @@
-import { integer, pgEnum, pgTable, primaryKey, real, text, timestamp } from "drizzle-orm/pg-core";
+import { integer, pgEnum, pgTable, primaryKey, real, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { CATEGORIES, UNCLASSIFIED } from "@comment-classificator/shared";
 
 // Mirrors the fixed category list in packages/shared; see docs/ESPECIFICACION.md,
@@ -37,6 +37,20 @@ export const commentClassificationCache = pgTable("comment_classification_cache"
   commentId: text("comment_id").primaryKey(),
   category: tabEnum("category").notNull(),
   confidence: real("confidence").notNull(),
+  modelVersion: text("model_version").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// A comment can be corrected more than once over time (e.g. by different viewers), so
+// each correction is its own row rather than overwriting the cache — see
+// docs/ESPECIFICACION.md, "Correcciones". Deliberately does NOT overwrite
+// comment_classification_cache: letting one viewer's correction silently change what
+// every other viewer of the same video sees isn't something the spec asks for.
+export const commentCorrections = pgTable("comment_corrections", {
+  id: serial("id").primaryKey(),
+  commentId: text("comment_id").notNull(),
+  originalCategory: tabEnum("original_category").notNull(),
+  correctedCategory: tabEnum("corrected_category").notNull(),
   modelVersion: text("model_version").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

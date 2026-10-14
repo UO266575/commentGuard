@@ -165,4 +165,58 @@ describe.skipIf(!url)("auth + classify flow", () => {
     const second = await classify([{ id: "c2", text: "mundo" }]);
     expect(second.status).toBe(402);
   });
+
+  it("records a correction without touching quota", async () => {
+    const app = createApp({ db: handle.db, googleVerifier: fakeVerifier, jevClient: fakeJevClient, monthlyQuota: 1000 });
+    const sessionToken = await login(app);
+
+    const res = await app.request("/api/corrections", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({
+        commentId: "c1",
+        originalCategory: "toxico",
+        correctedCategory: "negativo",
+        modelVersion: "jev-1.13.0",
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(await getRemainingQuota(handle.db, fakeIdentity.googleSub, 1000)).toBe(1000);
+  });
+
+  it("rejects /api/corrections without a session", async () => {
+    const app = createApp({ db: handle.db, googleVerifier: fakeVerifier, jevClient: fakeJevClient, monthlyQuota: 1000 });
+
+    const res = await app.request("/api/corrections", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        commentId: "c1",
+        originalCategory: "toxico",
+        correctedCategory: "negativo",
+        modelVersion: "jev-1.13.0",
+      }),
+    });
+
+    expect(res.status).toBe(401);
+  });
+
+  it("rejects an invalid category in a correction", async () => {
+    const app = createApp({ db: handle.db, googleVerifier: fakeVerifier, jevClient: fakeJevClient, monthlyQuota: 1000 });
+    const sessionToken = await login(app);
+
+    const res = await app.request("/api/corrections", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({
+        commentId: "c1",
+        originalCategory: "no-existe",
+        correctedCategory: "negativo",
+        modelVersion: "jev-1.13.0",
+      }),
+    });
+
+    expect(res.status).toBe(400);
+  });
 });
