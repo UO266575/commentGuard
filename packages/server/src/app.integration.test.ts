@@ -15,7 +15,7 @@ async function login(app: ReturnType<typeof createApp>) {
   const res = await app.request("/api/auth/google", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ idToken: "fake-token" }),
+    body: JSON.stringify({ accessToken: "fake-token" }),
   });
   const { sessionToken } = (await res.json()) as { sessionToken: string };
   return sessionToken;
@@ -38,7 +38,7 @@ describe.skipIf(!url)("auth + classify flow", () => {
     const res = await app.request("/api/auth/google", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken: "fake-token" }),
+      body: JSON.stringify({ accessToken: "fake-token" }),
     });
 
     expect(res.status).toBe(200);
@@ -52,7 +52,7 @@ describe.skipIf(!url)("auth + classify flow", () => {
     const res = await app.request("/api/auth/google", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken: "bad-token" }),
+      body: JSON.stringify({ accessToken: "bad-token" }),
     });
 
     expect(res.status).toBe(401);

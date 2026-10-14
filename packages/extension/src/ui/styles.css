@@ -37,6 +37,38 @@
   font-size: 14px;
 }
 
+.cg-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.cg-tab {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--yt-spec-10-percent-layer, #ccc);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.cg-tab--active {
+  background: var(--yt-spec-10-percent-layer, #e5e5e5);
+  font-weight: 500;
+}
+
+.cg-warning {
+  background: #fdecea;
+  color: #8c1d18;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  margin: 0 0 12px;
+}
+
 .cg-comment-list {
   list-style: none;
   margin: 0;

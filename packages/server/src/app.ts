@@ -30,12 +30,12 @@ export function createApp(deps: AppDependencies) {
 
   app.get("/health", (c) => c.json({ status: "ok" }));
 
-  app.post("/api/auth/google", zValidator("json", z.object({ idToken: z.string().min(1) })), async (c) => {
-    const { idToken } = c.req.valid("json");
+  app.post("/api/auth/google", zValidator("json", z.object({ accessToken: z.string().min(1) })), async (c) => {
+    const { accessToken } = c.req.valid("json");
 
     let identity;
     try {
-      identity = await deps.googleVerifier.verify(idToken);
+      identity = await deps.googleVerifier.verify(accessToken);
     } catch {
       return c.json({ error: "No se pudo verificar la sesión de Google." }, 401);
     }
