@@ -8,6 +8,28 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: comment_classificator
+          POSTGRES_PASSWORD: comment_classificator
+          POSTGRES_DB: comment_classificator
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U comment_classificator"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://comment_classificator:comment_classificator@localhost:5432/comment_classificator
+      GOOGLE_CLIENT_ID: ci-placeholder
+      SESSION_SECRET: ci-placeholder-session-secret-not-for-production
+      MONTHLY_COMMENT_QUOTA: 1000
+
     steps:
       - uses: actions/checkout@v4
 
@@ -19,6 +41,8 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      - run: pnpm --filter @comment-classificator/server run db:migrate
 
       - run: pnpm typecheck
 
