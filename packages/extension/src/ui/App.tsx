@@ -43,6 +43,29 @@ function Spinner() {
   return <span class="cg-spinner" aria-hidden="true" />;
 }
 
+interface AvatarProps {
+  src: string;
+  name: string;
+  size?: "normal" | "small";
+}
+
+function Avatar({ src, name, size = "normal" }: AvatarProps) {
+  const sizeClass = size === "small" ? "cg-avatar cg-avatar--small" : "cg-avatar";
+
+  if (src) {
+    return <img class={sizeClass} src={src} alt="" loading="lazy" />;
+  }
+
+  // No avatar URL (shouldn't normally happen, but comment text might) — fall back to a
+  // YouTube-style initial badge instead of a broken image icon.
+  const initial = name.replace(/^@/, "").charAt(0).toUpperCase() || "?";
+  return (
+    <span class={`${sizeClass} cg-avatar-fallback`} aria-hidden="true">
+      {initial}
+    </span>
+  );
+}
+
 interface CommentRowProps {
   comment: ClassifiedComment;
   onCorrected: (commentId: string, category: Tab) => void;
@@ -82,58 +105,64 @@ function CommentRow({ comment, onCorrected, fetchReplies, submitCorrection }: Co
 
   return (
     <li class="cg-comment">
-      <div class="cg-comment-meta">
-        {comment.author && <span class="cg-comment-author">{comment.author}</span>}
-        {comment.publishedTime && <span class="cg-comment-time">{comment.publishedTime}</span>}
-      </div>
-      <p class="cg-comment-text">{comment.text}</p>
+      <Avatar src={comment.authorAvatarUrl} name={comment.author} />
+      <div class="cg-comment-body">
+        <div class="cg-comment-meta">
+          {comment.author && <span class="cg-comment-author">{comment.author}</span>}
+          {comment.publishedTime && <span class="cg-comment-time">{comment.publishedTime}</span>}
+        </div>
+        <p class="cg-comment-text">{comment.text}</p>
 
-      <div class="cg-comment-actions">
-        {comment.repliesContinuation && (
-          <button type="button" class="cg-link-button" onClick={handleShowReplies} disabled={loadingReplies}>
-            {replies !== null
-              ? `${replies.length} respuesta${replies.length === 1 ? "" : "s"}`
-              : loadingReplies
-                ? "Cargando…"
-                : `Ver respuestas (${comment.replyCount})`}
-          </button>
-        )}
+        <div class="cg-comment-actions">
+          {comment.repliesContinuation && (
+            <button type="button" class="cg-link-button" onClick={handleShowReplies} disabled={loadingReplies}>
+              {replies !== null
+                ? `${replies.length} respuesta${replies.length === 1 ? "" : "s"}`
+                : loadingReplies
+                  ? "Cargando…"
+                  : `Ver respuestas (${comment.replyCount})`}
+            </button>
+          )}
 
-        {correcting ? (
-          <select
-            class="cg-select"
-            onBlur={() => setCorrecting(false)}
-            onChange={(event) => handleCorrect((event.currentTarget as HTMLSelectElement).value as Tab)}
-          >
-            <option value="">Elige la categoría correcta…</option>
-            {TABS.filter((tab) => tab.id !== comment.category).map((tab) => (
-              <option key={tab.id} value={tab.id}>
-                {tab.label}
-              </option>
+          {correcting ? (
+            <select
+              class="cg-select"
+              onBlur={() => setCorrecting(false)}
+              onChange={(event) => handleCorrect((event.currentTarget as HTMLSelectElement).value as Tab)}
+            >
+              <option value="">Elige la categoría correcta…</option>
+              {TABS.filter((tab) => tab.id !== comment.category).map((tab) => (
+                <option key={tab.id} value={tab.id}>
+                  {tab.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <button type="button" class="cg-link-button" onClick={() => setCorrecting(true)}>
+              Mal clasificado
+            </button>
+          )}
+        </div>
+
+        {correctionError && <p class="cg-error">{correctionError}</p>}
+
+        {replies !== null && replies.length > 0 && (
+          <ul class="cg-reply-list">
+            {replies.map((reply) => (
+              <li key={reply.id} class="cg-reply">
+                <Avatar src={reply.authorAvatarUrl} name={reply.author} size="small" />
+                <div class="cg-comment-body">
+                  <div class="cg-comment-meta">
+                    {reply.author && <span class="cg-comment-author">{reply.author}</span>}
+                    {reply.publishedTime && <span class="cg-comment-time">{reply.publishedTime}</span>}
+                  </div>
+                  <p class="cg-reply-text">{reply.text}</p>
+                </div>
+              </li>
             ))}
-          </select>
-        ) : (
-          <button type="button" class="cg-link-button" onClick={() => setCorrecting(true)}>
-            Mal clasificado
-          </button>
+          </ul>
         )}
       </div>
-
-      {correctionError && <p class="cg-error">{correctionError}</p>}
-
-      {replies !== null && replies.length > 0 && (
-        <ul class="cg-reply-list">
-          {replies.map((reply) => (
-            <li key={reply.id}>
-              <div class="cg-comment-meta">
-                {reply.author && <span class="cg-comment-author">{reply.author}</span>}
-                {reply.publishedTime && <span class="cg-comment-time">{reply.publishedTime}</span>}
-              </div>
-              <p class="cg-reply-text">{reply.text}</p>
-            </li>
-          ))}
-        </ul>
-      )}
     </li>
   );
 }

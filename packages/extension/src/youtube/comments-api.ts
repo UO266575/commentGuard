@@ -9,6 +9,7 @@ export interface TopLevelComment extends RawComment {
   // Display-only fields, never sent to the server (RawComment — just {id, text} — is what
   // actually goes into the classify request body).
   author: string;
+  authorAvatarUrl: string;
   publishedTime: string;
   // Raw as YouTube formats it ("985", "4.8M"...), for display only.
   replyCount: string;
@@ -22,6 +23,7 @@ export interface CommentsPage {
 
 export interface Reply extends RawComment {
   author: string;
+  authorAvatarUrl: string;
   publishedTime: string;
 }
 
@@ -39,6 +41,7 @@ interface CommentEntityPayload {
   };
   author?: {
     displayName?: string;
+    avatarThumbnailUrl?: string;
   };
   toolbar?: {
     replyCount?: string;
@@ -131,6 +134,7 @@ export function parseCommentsResponse(response: unknown): CommentsPage {
         id,
         text: payload.properties?.content?.content ?? "",
         author: payload.author?.displayName ?? "",
+        authorAvatarUrl: payload.author?.avatarThumbnailUrl ?? "",
         publishedTime: payload.properties?.publishedTime ?? "",
         replyCount: payload.toolbar?.replyCount ?? "0",
         repliesContinuation: repliesContinuationById.get(id) ?? null,
@@ -151,6 +155,7 @@ export function parseRepliesResponse(response: unknown): RepliesPage {
       id: payload.properties?.commentId ?? "",
       text: payload.properties?.content?.content ?? "",
       author: payload.author?.displayName ?? "",
+      authorAvatarUrl: payload.author?.avatarThumbnailUrl ?? "",
       publishedTime: payload.properties?.publishedTime ?? "",
     }))
     .filter((reply) => reply.id !== "");

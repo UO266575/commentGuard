@@ -14,6 +14,7 @@ export interface ClassifiedComment {
   id: string;
   text: string;
   author: string;
+  authorAvatarUrl: string;
   publishedTime: string;
   category: Tab;
   confidence: number;
@@ -61,6 +62,7 @@ function mergeTextIntoResults(
       id: result.commentId,
       text: source?.text ?? "",
       author: source?.author ?? "",
+      authorAvatarUrl: source?.authorAvatarUrl ?? "",
       publishedTime: source?.publishedTime ?? "",
       category: result.category,
       confidence: result.confidence,
