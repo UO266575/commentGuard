@@ -1,7 +1,9 @@
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "./app.js";
 import type { GoogleTokenVerifier } from "./auth/google.js";
 import { createDatabase, type DatabaseHandle } from "./db/client.js";
+import { users } from "./db/schema.js";
 import { testDatabaseUrl, truncateAll } from "./db/test-db.js";
 import type { JevClient } from "./jev/client.js";
 import { getRemainingQuota } from "./quota/repository.js";
@@ -218,5 +220,23 @@ describe.skipIf(!url)("auth + classify flow", () => {
     });
 
     expect(res.status).toBe(400);
+  });
+
+  it("returns 401 instead of a 500 when the session names a user that no longer exists", async () => {
+    const app = createApp({ db: handle.db, googleVerifier: fakeVerifier, jevClient: fakeJevClient, monthlyQuota: 1000 });
+    const sessionToken = await login(app);
+
+    // The JWT is still cryptographically valid, but the user row behind it is gone (e.g.
+    // another process truncated the table) — this is exactly the bug that originally
+    // surfaced as an unhandled foreign-key-violation 500 on /api/classify.
+    await handle.db.delete(users).where(eq(users.googleSub, fakeIdentity.googleSub));
+
+    const res = await app.request("/api/classify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({ videoId: "v1", videoTitle: "t", comments: [{ id: "c1", text: "hola" }] }),
+    });
+
+    expect(res.status).toBe(401);
   });
 });

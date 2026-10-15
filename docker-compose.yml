@@ -11,6 +11,7 @@ services:
       - "5432:5432"
     volumes:
       - comment-classificator-postgres-data:/var/lib/postgresql/data
+      - ./docker/init-test-db.sql:/docker-entrypoint-initdb.d/init-test-db.sql:ro
 
 volumes:
   comment-classificator-postgres-data:
