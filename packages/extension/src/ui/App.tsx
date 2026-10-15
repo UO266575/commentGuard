@@ -5,8 +5,10 @@ import type { Reply } from "../youtube/comments-api";
 
 type ViewState =
   | { kind: "choice" }
-  | { kind: "loading"; count: number }
-  | { kind: "results"; comments: ClassifiedComment[]; nextContinuation: string | null }
+  // Only shown before the very first batch arrives — once there's anything to show, the
+  // rest loads in the background while the user reads (see ResultsView's isLoadingMore).
+  | { kind: "loading" }
+  | { kind: "results"; comments: ClassifiedComment[]; nextContinuation: string | null; isLoadingMore: boolean }
   | { kind: "error"; message: string };
 
 export interface AppProps {
@@ -139,8 +141,8 @@ function CommentRow({ comment, onCorrected, fetchReplies, submitCorrection }: Co
 interface ResultsViewProps {
   comments: ClassifiedComment[];
   nextContinuation: string | null;
-  loadingMore: boolean;
-  loadMoreError: string | null;
+  isLoadingMore: boolean;
+  backgroundLoadError: string | null;
   onLoadMore: () => void;
   onCorrected: (commentId: string, category: Tab) => void;
   fetchReplies: AppProps["fetchReplies"];
@@ -150,8 +152,8 @@ interface ResultsViewProps {
 function ResultsView({
   comments,
   nextContinuation,
-  loadingMore,
-  loadMoreError,
+  isLoadingMore,
+  backgroundLoadError,
   onLoadMore,
   onCorrected,
   fetchReplies,
@@ -189,7 +191,7 @@ function ResultsView({
       )}
 
       {activeComments.length === 0 ? (
-        <p class="cg-intro">No hay comentarios en esta pestaña.</p>
+        <p class="cg-intro">{isLoadingMore ? "Clasificando comentarios…" : "No hay comentarios en esta pestaña."}</p>
       ) : (
         <ul class="cg-comment-list">
           {activeComments.map((comment) => (
@@ -204,58 +206,56 @@ function ResultsView({
         </ul>
       )}
 
-      {nextContinuation && (
-        <button type="button" class="cg-button cg-load-more" onClick={onLoadMore} disabled={loadingMore}>
-          {loadingMore ? "Cargando más…" : "Cargar más"}
-        </button>
+      {isLoadingMore ? (
+        <p class="cg-loading cg-load-more">
+          <Spinner />
+          Cargando más comentarios en segundo plano…
+        </p>
+      ) : (
+        nextContinuation && (
+          <button type="button" class="cg-button cg-load-more" onClick={onLoadMore}>
+            Cargar más
+          </button>
+        )
       )}
-      {loadMoreError && <p class="cg-error">No se pudieron cargar más comentarios: {loadMoreError}</p>}
+      {backgroundLoadError && <p class="cg-error">No se pudieron cargar más comentarios: {backgroundLoadError}</p>}
     </div>
   );
 }
 
 export function App({ onUnfiltered, fetchClassifiedComments, fetchReplies, submitCorrection }: AppProps) {
   const [state, setState] = useState<ViewState>({ kind: "choice" });
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
+  const [backgroundLoadError, setBackgroundLoadError] = useState<string | null>(null);
 
-  async function handleFiltered() {
-    setState({ kind: "loading", count: 0 });
+  // Used for both the initial "Filtrados" click (continuation undefined) and "Cargar
+  // más" (continuation set): either way, comments already on screen stay there — new
+  // batches are appended as they arrive instead of blocking behind a full-page spinner,
+  // so the user can start reading the first batch while the rest loads in the background.
+  async function loadComments(continuation?: string) {
+    const isInitialLoad = !continuation;
+    if (isInitialLoad) setState({ kind: "loading" });
 
-    const collected: ClassifiedComment[] = [];
+    let collected = !isInitialLoad && state.kind === "results" ? [...state.comments] : [];
+
     try {
-      const iterator = fetchClassifiedComments();
+      const iterator = fetchClassifiedComments(continuation);
       let result = await iterator.next();
       while (!result.done) {
-        collected.push(...result.value);
-        setState({ kind: "loading", count: collected.length });
+        collected = [...collected, ...result.value];
+        setState({ kind: "results", comments: collected, nextContinuation: null, isLoadingMore: true });
         result = await iterator.next();
       }
-      setState({ kind: "results", comments: collected, nextContinuation: result.value });
+      setState({ kind: "results", comments: collected, nextContinuation: result.value, isLoadingMore: false });
+      setBackgroundLoadError(null);
     } catch (error) {
-      setState({ kind: "error", message: error instanceof Error ? error.message : "Error desconocido" });
-    }
-  }
-
-  async function handleLoadMore() {
-    if (state.kind !== "results" || !state.nextContinuation || loadingMore) return;
-
-    setLoadingMore(true);
-    setLoadMoreError(null);
-    const collected = [...state.comments];
-    try {
-      const iterator = fetchClassifiedComments(state.nextContinuation);
-      let result = await iterator.next();
-      while (!result.done) {
-        collected.push(...result.value);
-        result = await iterator.next();
+      const message = error instanceof Error ? error.message : "Error desconocido";
+      if (collected.length > 0) {
+        // Keep what's already loaded on screen; only report that the rest failed.
+        setState({ kind: "results", comments: collected, nextContinuation: null, isLoadingMore: false });
+        setBackgroundLoadError(message);
+      } else {
+        setState({ kind: "error", message });
       }
-      setState({ kind: "results", comments: collected, nextContinuation: result.value });
-    } catch (error) {
-      // Keep the comments already loaded on screen; only report the failure.
-      setLoadMoreError(error instanceof Error ? error.message : "Error desconocido");
-    } finally {
-      setLoadingMore(false);
     }
   }
 
@@ -275,7 +275,7 @@ export function App({ onUnfiltered, fetchClassifiedComments, fetchReplies, submi
             <button type="button" class="cg-button" onClick={onUnfiltered}>
               Sin filtrar
             </button>
-            <button type="button" class="cg-button cg-button--primary" onClick={handleFiltered}>
+            <button type="button" class="cg-button cg-button--primary" onClick={() => loadComments()}>
               Filtrados
             </button>
           </div>
@@ -287,7 +287,7 @@ export function App({ onUnfiltered, fetchClassifiedComments, fetchReplies, submi
         <div class="cg-root">
           <p class="cg-loading">
             <Spinner />
-            Cargando y clasificando comentarios… ({state.count})
+            Cargando los primeros comentarios…
           </p>
         </div>
       );
@@ -307,9 +307,9 @@ export function App({ onUnfiltered, fetchClassifiedComments, fetchReplies, submi
         <ResultsView
           comments={state.comments}
           nextContinuation={state.nextContinuation}
-          loadingMore={loadingMore}
-          loadMoreError={loadMoreError}
-          onLoadMore={handleLoadMore}
+          isLoadingMore={state.isLoadingMore}
+          backgroundLoadError={backgroundLoadError}
+          onLoadMore={() => loadComments(state.nextContinuation ?? undefined)}
           onCorrected={handleCorrected}
           fetchReplies={fetchReplies}
           submitCorrection={submitCorrection}

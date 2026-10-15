@@ -27,6 +27,11 @@ export function getJevApiKey(): string {
   return required("JEV_API_KEY");
 }
 
+// Local development/demo only — see jev/mock-client.ts.
+export function getJevMockMode(): boolean {
+  return process.env["JEV_MOCK_MODE"] === "true";
+}
+
 // Provisional default; the real plan size is still an open question — see
 // docs/ESPECIFICACION.md, "Modelo de negocio y puntos abiertos".
 export function getMonthlyCommentQuota(): number {
