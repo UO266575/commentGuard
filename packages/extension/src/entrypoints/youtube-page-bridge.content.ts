@@ -1,7 +1,7 @@
 import { findInitialCommentsContinuation, type BridgeData } from "../youtube/bridge-data";
 import { BRIDGE_DATA_EVENT } from "../youtube/bridge-events";
 
-// Runs in the page's own MAIN world (unlike youtube.content.ts) so it can read the
+// Runs in the page's own MAIN world (unlike youtube.content.tsx) so it can read the
 // `ytcfg`/`ytInitialData` globals YouTube's own scripts set on `window`. It never touches
 // the DOM beyond dispatching one event, keeping the extension's footprint in the page
 // context as small as possible.
@@ -29,27 +29,34 @@ function readBridgeData(): BridgeData | null {
   };
 }
 
+const REBROADCAST_ATTEMPTS = 20;
+const REBROADCAST_INTERVAL_MS = 250;
+
 export default defineContentScript({
   matches: ["*://www.youtube.com/watch*"],
   world: "MAIN",
   main() {
-    // `ytcfg`/`ytInitialData` are set by inline scripts that run before this content
-    // script's default `documentIdle` timing, but YouTube's client-side navigation can
-    // recreate them later, so keep retrying briefly instead of reading them exactly once.
-    const attemptDispatch = () => {
-      const data = readBridgeData();
-      if (!data) return false;
+    // MAIN-world and ISOLATED-world content scripts for the same page are separate
+    // injections with no guaranteed relative order — Chrome can (and, in practice,
+    // reliably does on some loads) run this script and dispatch before
+    // bridge-listener.ts's `document.addEventListener` in the isolated world has even
+    // attached, and a CustomEvent dispatched to no listener is lost forever. So this
+    // keeps re-broadcasting the same data for a few seconds instead of sending it once,
+    // to land on whatever call-and-response timing the isolated side actually attaches at.
+    let attempts = 0;
 
-      document.dispatchEvent(new CustomEvent<BridgeData>(BRIDGE_DATA_EVENT, { detail: data }));
-      return true;
+    const broadcast = () => {
+      attempts += 1;
+
+      const data = readBridgeData();
+      if (data) {
+        document.dispatchEvent(new CustomEvent<BridgeData>(BRIDGE_DATA_EVENT, { detail: data }));
+      }
+
+      if (attempts >= REBROADCAST_ATTEMPTS) clearInterval(interval);
     };
 
-    if (attemptDispatch()) return;
-
-    let attempts = 0;
-    const interval = setInterval(() => {
-      attempts += 1;
-      if (attemptDispatch() || attempts >= 20) clearInterval(interval);
-    }, 250);
+    broadcast();
+    const interval = setInterval(broadcast, REBROADCAST_INTERVAL_MS);
   },
 });
