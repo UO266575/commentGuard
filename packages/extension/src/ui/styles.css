@@ -27,7 +27,15 @@
 /* Self-contained design tokens: deliberately NOT borrowed from YouTube's --yt-spec-*
    variables. Verified live (2026-10-15) that those don't behave as plain inherited CSS
    custom properties here, and that YouTube's dark theme is independent of
-   prefers-color-scheme — see ui/theme.ts for how data-theme actually gets set. */
+   prefers-color-scheme — see ui/theme.ts for how data-theme actually gets set.
+
+   Custom properties only in these two :host blocks, deliberately — WXT's shadow-root
+   reset is `:host{all:initial!important}` (see wxt/dist/utils/content-script-ui/shadow-root.mjs),
+   which wipes any ordinary property (font-family, color-scheme, display...) declared
+   directly on :host no matter what. Custom properties are the one thing `all` never
+   touches, so they survive; everything else that actually needs to render has to live on
+   .cg-root (a normal element inside the shadow tree, untouched by a reset that only
+   targets :host itself) instead. */
 :host {
   --cg-bg: #ffffff;
   --cg-bg-raised: #f8f9fa;
@@ -46,10 +54,6 @@
   --cg-radius-sm: 8px;
   --cg-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
   --cg-font: "Inter", Roboto, Arial, sans-serif;
-
-  display: block;
-  font-family: var(--cg-font);
-  color-scheme: light;
 }
 
 :host([data-theme="dark"]) {
@@ -66,12 +70,12 @@
   --cg-danger-text: #f6a9a0;
   --cg-danger-border: #5c332e;
   --cg-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  color-scheme: dark;
 }
 
 .cg-root {
-  position: relative; /* anchors the toxic-tab confirmation overlay */
   box-sizing: border-box;
+  font-family: var(--cg-font);
+  color-scheme: light;
   background: var(--cg-bg);
   color: var(--cg-text);
   border: 1px solid var(--cg-border);
@@ -80,17 +84,24 @@
   padding: 20px;
 }
 
+:host([data-theme="dark"]) .cg-root {
+  color-scheme: dark;
+}
+
+/* Fixed to the viewport, not absolute within .cg-root: the comments panel can be much
+   taller than the screen, and an absolutely-positioned overlay centered on ITS height
+   could land far below the fold instead of where the user is actually looking. */
 .cg-modal-overlay {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  z-index: 10;
+  z-index: 2147483647;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
   box-sizing: border-box;
   background: rgba(0, 0, 0, 0.5);
-  border-radius: var(--cg-radius-lg);
+  font-family: var(--cg-font);
 }
 
 .cg-modal {
