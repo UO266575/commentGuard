@@ -16,6 +16,14 @@ const env = loadEnv(process.env["NODE_ENV"] ?? "development", envDir, "");
 const extensionPublicKey = env["EXTENSION_PUBLIC_KEY"];
 const googleOAuthClientId = env["GOOGLE_OAUTH_CLIENT_ID"] || "REPLACE_WITH_REAL_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com";
 
+// Must match packages/extension/src/server/config.ts's SERVER_BASE_URL (same env var).
+// A content script's fetch() calls are subject to the target's CORS policy UNLESS the
+// extension holds a host_permissions entry for it — without this, every call to our own
+// server gets blocked by the browser before the server even sees the request, regardless
+// of anything the server itself does. The production server's real domain is still an
+// open deployment question (docs/ESPECIFICACION.md), so this stays overridable.
+const serverOrigin = new URL(env["WXT_SERVER_BASE_URL"] || "http://localhost:3000").origin;
+
 // See https://wxt.dev/api/config.html
 export default defineConfig({
   srcDir: "src",
@@ -26,7 +34,7 @@ export default defineConfig({
     name: "CommentGuard",
     description: "Clasifica los comentarios de YouTube para proteger tu salud mental.",
     permissions: ["identity", "storage"],
-    host_permissions: ["https://www.youtube.com/*"],
+    host_permissions: ["https://www.youtube.com/*", `${serverOrigin}/*`],
     ...(extensionPublicKey ? { key: extensionPublicKey } : {}),
     oauth2: {
       client_id: googleOAuthClientId,
