@@ -1,6 +1,7 @@
 import { useMemo, useState } from "preact/hooks";
-import { TABS, type RawComment, type Tab } from "@comment-classificator/shared";
+import { TABS, type Tab } from "@comment-classificator/shared";
 import type { ClassifiedComment } from "../classification/pipeline";
+import type { Reply } from "../youtube/comments-api";
 
 type ViewState =
   | { kind: "choice" }
@@ -14,14 +15,30 @@ export interface AppProps {
   // of ~20 classified comments arrive, instead of waiting for all 300 at once. Pass a
   // continuation to resume a previous call instead of starting over (see "Cargar más").
   fetchClassifiedComments: (continuation?: string) => AsyncGenerator<ClassifiedComment[], string | null>;
-  fetchReplies: (continuation: string) => Promise<{ replies: RawComment[]; nextContinuation: string | null }>;
+  fetchReplies: (continuation: string) => Promise<{ replies: Reply[]; nextContinuation: string | null }>;
   submitCorrection: (correction: { commentId: string; originalCategory: Tab; correctedCategory: Tab }) => Promise<void>;
 }
+
+// Purely decorative — a quick visual anchor per category, not a substitute for the text
+// label that's always shown right next to it.
+const TAB_ICONS: Record<Tab, string> = {
+  positivo: "👍",
+  constructivo: "💡",
+  neutral: "💬",
+  irrelevante: "🚫",
+  negativo: "👎",
+  toxico: "⚠️",
+  sin_clasificar: "❓",
+};
 
 function groupByTab(comments: ClassifiedComment[]): Map<Tab, ClassifiedComment[]> {
   const groups = new Map<Tab, ClassifiedComment[]>(TABS.map((tab) => [tab.id, []]));
   for (const comment of comments) groups.get(comment.category)?.push(comment);
   return groups;
+}
+
+function Spinner() {
+  return <span class="cg-spinner" aria-hidden="true" />;
 }
 
 interface CommentRowProps {
@@ -32,7 +49,7 @@ interface CommentRowProps {
 }
 
 function CommentRow({ comment, onCorrected, fetchReplies, submitCorrection }: CommentRowProps) {
-  const [replies, setReplies] = useState<RawComment[] | null>(null);
+  const [replies, setReplies] = useState<Reply[] | null>(null);
   const [loadingReplies, setLoadingReplies] = useState(false);
   const [correcting, setCorrecting] = useState(false);
   const [correctionError, setCorrectionError] = useState<string | null>(null);
@@ -63,6 +80,10 @@ function CommentRow({ comment, onCorrected, fetchReplies, submitCorrection }: Co
 
   return (
     <li class="cg-comment">
+      <div class="cg-comment-meta">
+        {comment.author && <span class="cg-comment-author">{comment.author}</span>}
+        {comment.publishedTime && <span class="cg-comment-time">{comment.publishedTime}</span>}
+      </div>
       <p class="cg-comment-text">{comment.text}</p>
 
       <div class="cg-comment-actions">
@@ -101,8 +122,12 @@ function CommentRow({ comment, onCorrected, fetchReplies, submitCorrection }: Co
       {replies !== null && replies.length > 0 && (
         <ul class="cg-reply-list">
           {replies.map((reply) => (
-            <li key={reply.id} class="cg-reply">
-              {reply.text}
+            <li key={reply.id}>
+              <div class="cg-comment-meta">
+                {reply.author && <span class="cg-comment-author">{reply.author}</span>}
+                {reply.publishedTime && <span class="cg-comment-time">{reply.publishedTime}</span>}
+              </div>
+              <p class="cg-reply-text">{reply.text}</p>
             </li>
           ))}
         </ul>
@@ -148,13 +173,19 @@ function ResultsView({
             class={activeTab === tab.id ? "cg-tab cg-tab--active" : "cg-tab"}
             onClick={() => setActiveTab(tab.id)}
           >
-            {tab.label} ({groups.get(tab.id)?.length ?? 0})
+            <span class="cg-tab-icon" aria-hidden="true">
+              {TAB_ICONS[tab.id]}
+            </span>
+            {tab.label}
+            <span class="cg-tab-count">({groups.get(tab.id)?.length ?? 0})</span>
           </button>
         ))}
       </div>
 
       {activeTab === "toxico" && (
-        <p class="cg-warning">No se recomienda leer esta pestaña: puede contener insultos, acoso o amenazas.</p>
+        <p class="cg-warning">
+          <span aria-hidden="true">⚠️</span> No se recomienda leer esta pestaña: puede contener insultos, acoso o amenazas.
+        </p>
       )}
 
       {activeComments.length === 0 ? (
@@ -174,7 +205,7 @@ function ResultsView({
       )}
 
       {nextContinuation && (
-        <button type="button" class="cg-button" onClick={onLoadMore} disabled={loadingMore}>
+        <button type="button" class="cg-button cg-load-more" onClick={onLoadMore} disabled={loadingMore}>
           {loadingMore ? "Cargando más…" : "Cargar más"}
         </button>
       )}
@@ -254,7 +285,10 @@ export function App({ onUnfiltered, fetchClassifiedComments, fetchReplies, submi
     case "loading":
       return (
         <div class="cg-root">
-          <p class="cg-intro">Cargando y clasificando comentarios… ({state.count})</p>
+          <p class="cg-loading">
+            <Spinner />
+            Cargando y clasificando comentarios… ({state.count})
+          </p>
         </div>
       );
 

@@ -24,7 +24,13 @@
           "type": "ENTITY_MUTATION_TYPE_REPLACE",
           "payload": {
             "commentEntityPayload": {
-              "properties": { "commentId": "c1-reply-1", "content": { "content": "I agree!" }, "replyLevel": 1 }
+              "properties": {
+                "commentId": "c1-reply-1",
+                "content": { "content": "I agree!" },
+                "replyLevel": 1,
+                "publishedTime": "5 hours ago"
+              },
+              "author": { "displayName": "@dave" }
             }
           }
         },
@@ -33,7 +39,13 @@
           "type": "ENTITY_MUTATION_TYPE_REPLACE",
           "payload": {
             "commentEntityPayload": {
-              "properties": { "commentId": "c1-reply-1-reply-1", "content": { "content": "Me too" }, "replyLevel": 2 }
+              "properties": {
+                "commentId": "c1-reply-1-reply-1",
+                "content": { "content": "Me too" },
+                "replyLevel": 2,
+                "publishedTime": "4 hours ago"
+              },
+              "author": { "displayName": "@erin" }
             }
           }
         }

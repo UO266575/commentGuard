@@ -23,6 +23,13 @@ describe("parseCommentsResponse", () => {
     expect(c2).toMatchObject({ replyCount: "0", repliesContinuation: null });
   });
 
+  it("includes the author and published time for display", () => {
+    const result = parseCommentsResponse(page1);
+    const c1 = result.comments.find((comment) => comment.id === "c1");
+
+    expect(c1).toMatchObject({ author: "@alice", publishedTime: "2 days ago" });
+  });
+
   it("finds the next page token without confusing it with a reply continuation", () => {
     expect(parseCommentsResponse(page1).nextContinuation).toBe("SAMPLE_PAGE_2_TOKEN");
   });
@@ -37,8 +44,8 @@ describe("parseRepliesResponse", () => {
     const result = parseRepliesResponse(repliesResponse);
 
     expect(result.replies).toEqual([
-      { id: "c1-reply-1", text: "I agree!" },
-      { id: "c1-reply-1-reply-1", text: "Me too" },
+      { id: "c1-reply-1", text: "I agree!", author: "@dave", publishedTime: "5 hours ago" },
+      { id: "c1-reply-1-reply-1", text: "Me too", author: "@erin", publishedTime: "4 hours ago" },
     ]);
   });
 

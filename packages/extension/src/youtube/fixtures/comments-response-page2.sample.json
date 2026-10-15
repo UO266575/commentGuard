@@ -17,7 +17,12 @@
           "type": "ENTITY_MUTATION_TYPE_REPLACE",
           "payload": {
             "commentEntityPayload": {
-              "properties": { "commentId": "c3", "content": { "content": "Last one" }, "replyLevel": 0 },
+              "properties": {
+                "commentId": "c3",
+                "content": { "content": "Last one" },
+                "replyLevel": 0,
+                "publishedTime": "3 weeks ago"
+              },
               "author": { "displayName": "@carol" },
               "toolbar": { "replyCount": "0" }
             }
