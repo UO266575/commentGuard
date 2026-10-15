@@ -30,7 +30,7 @@
                 "replyLevel": 1,
                 "publishedTime": "5 hours ago"
               },
-              "author": { "displayName": "@dave" }
+              "author": { "displayName": "@dave", "avatarThumbnailUrl": "https://yt3.ggpht.com/dave=s88" }
             }
           }
         },
@@ -45,7 +45,7 @@
                 "replyLevel": 2,
                 "publishedTime": "4 hours ago"
               },
-              "author": { "displayName": "@erin" }
+              "author": { "displayName": "@erin", "avatarThumbnailUrl": "https://yt3.ggpht.com/erin=s88" }
             }
           }
         }

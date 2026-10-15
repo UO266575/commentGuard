@@ -1,7 +1,8 @@
 /* Self-contained design tokens: deliberately NOT borrowed from YouTube's --yt-spec-*
    variables. Verified live (2026-10-15) that those don't behave as plain inherited CSS
    custom properties here, and that YouTube's dark theme is independent of
-   prefers-color-scheme — see ui/theme.ts for how data-theme actually gets set. */
+   prefers-color-scheme — see ui/theme.ts for how data-theme actually gets set. The font
+   stack, though, is copied verbatim from YouTube's own computed style, for consistency. */
 :host {
   --cg-bg: #ffffff;
   --cg-bg-raised: #f8f9fa;
@@ -22,8 +23,7 @@
   --cg-radius-md: 10px;
   --cg-radius-sm: 8px;
   --cg-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
-  --cg-font:
-    Roboto, "Segoe UI", Arial, sans-serif;
+  --cg-font: Roboto, Arial, sans-serif;
 
   display: block;
   font-family: var(--cg-font);
@@ -140,13 +140,22 @@
   }
 }
 
+/* An underline tab bar (à la Material/YouTube Studio) instead of a row of pill buttons:
+   one shared baseline, active tab marked by a colored underline rather than a filled
+   background. Scrolls horizontally when the labels don't fit, but — unlike a page
+   scrollbar — that scrollbar is decoration no one needs to grab, so it's hidden; the
+   content still scrolls fine with touch/trackpad/shift+wheel. */
 .cg-tabs {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   overflow-x: auto;
-  padding-bottom: 6px;
   margin: 0 0 16px;
-  scrollbar-width: thin;
+  border-bottom: 1px solid var(--cg-border);
+  scrollbar-width: none;
+}
+
+.cg-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .cg-tab {
@@ -157,26 +166,25 @@
   font: inherit;
   font-size: 13px;
   font-weight: 500;
-  padding: 8px 14px;
-  border-radius: 999px;
-  border: 1px solid var(--cg-border);
-  background: var(--cg-bg-raised);
+  padding: 10px 14px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
   color: var(--cg-text-secondary);
   cursor: pointer;
   transition:
-    background-color 120ms ease,
     color 120ms ease,
     border-color 120ms ease;
 }
 
 .cg-tab:hover {
-  background: var(--cg-bg-hover);
+  color: var(--cg-text);
 }
 
 .cg-tab--active {
-  background: var(--cg-accent);
-  border-color: transparent;
-  color: var(--cg-accent-text);
+  color: var(--cg-text);
+  border-bottom-color: var(--cg-accent);
 }
 
 .cg-tab-icon {
@@ -212,6 +220,9 @@
 }
 
 .cg-comment {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
   padding: 12px 14px;
   border-radius: var(--cg-radius-md);
   background: var(--cg-bg-raised);
@@ -220,6 +231,34 @@
 
 .cg-comment:hover {
   background: var(--cg-bg-hover);
+}
+
+.cg-comment-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.cg-avatar {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--cg-bg-hover);
+}
+
+.cg-avatar--small {
+  width: 24px;
+  height: 24px;
+}
+
+.cg-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cg-text-secondary);
 }
 
 .cg-comment-meta {
@@ -293,6 +332,12 @@
   padding: 10px 0 0 14px;
   border-left: 2px solid var(--cg-border);
   list-style: none;
+}
+
+.cg-reply {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
 }
 
 .cg-reply-text {

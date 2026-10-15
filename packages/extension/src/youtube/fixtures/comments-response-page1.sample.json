@@ -60,7 +60,7 @@
                 "replyLevel": 0,
                 "publishedTime": "2 days ago"
               },
-              "author": { "displayName": "@alice" },
+              "author": { "displayName": "@alice", "avatarThumbnailUrl": "https://yt3.ggpht.com/alice=s88" },
               "toolbar": { "replyCount": "1" }
             }
           }
@@ -87,7 +87,7 @@
                 "replyLevel": 0,
                 "publishedTime": "1 hour ago"
               },
-              "author": { "displayName": "@bob" },
+              "author": { "displayName": "@bob", "avatarThumbnailUrl": "https://yt3.ggpht.com/bob=s88" },
               "toolbar": { "replyCount": "0" }
             }
           }
