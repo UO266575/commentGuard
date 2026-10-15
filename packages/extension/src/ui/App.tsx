@@ -167,6 +167,33 @@ function CommentRow({ comment, onCorrected, fetchReplies, submitCorrection }: Co
   );
 }
 
+function ToxicConfirmModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div class="cg-modal-overlay" onClick={onCancel}>
+      <div
+        class="cg-modal"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="cg-modal-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <p id="cg-modal-title" class="cg-modal-title">
+          <span aria-hidden="true">⚠️</span> ¿Ver los comentarios tóxicos?
+        </p>
+        <p class="cg-modal-text">Puede contener insultos, acoso o amenazas.</p>
+        <div class="cg-modal-actions">
+          <button type="button" class="cg-button" onClick={onCancel}>
+            No
+          </button>
+          <button type="button" class="cg-button cg-button--primary" onClick={onConfirm}>
+            Sí
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface ResultsViewProps {
   comments: ClassifiedComment[];
   nextContinuation: string | null;
@@ -190,10 +217,31 @@ function ResultsView({
 }: ResultsViewProps) {
   const groups = useMemo(() => groupByTab(comments), [comments]);
   const [activeTab, setActiveTab] = useState<Tab>(TABS[0]?.id ?? "positivo");
+  const [confirmingToxic, setConfirmingToxic] = useState(false);
   const activeComments = groups.get(activeTab) ?? [];
+
+  function handleTabClick(tabId: Tab) {
+    // Entering "Tóxicos" always needs an explicit "Sí" first — declining, or dismissing
+    // the dialog any other way, leaves the current tab untouched.
+    if (tabId === "toxico") {
+      setConfirmingToxic(true);
+      return;
+    }
+    setActiveTab(tabId);
+  }
 
   return (
     <div class="cg-root">
+      {confirmingToxic && (
+        <ToxicConfirmModal
+          onConfirm={() => {
+            setActiveTab("toxico");
+            setConfirmingToxic(false);
+          }}
+          onCancel={() => setConfirmingToxic(false)}
+        />
+      )}
+
       <div class="cg-tabs" role="tablist">
         {TABS.map((tab) => (
           <button
@@ -202,7 +250,7 @@ function ResultsView({
             role="tab"
             aria-selected={activeTab === tab.id}
             class={activeTab === tab.id ? "cg-tab cg-tab--active" : "cg-tab"}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => handleTabClick(tab.id)}
           >
             <span class="cg-tab-icon" aria-hidden="true">
               {TAB_ICONS[tab.id]}
@@ -212,12 +260,6 @@ function ResultsView({
           </button>
         ))}
       </div>
-
-      {activeTab === "toxico" && (
-        <p class="cg-warning">
-          <span aria-hidden="true">⚠️</span> No se recomienda leer esta pestaña: puede contener insultos, acoso o amenazas.
-        </p>
-      )}
 
       {activeComments.length === 0 ? (
         <p class="cg-intro">{isLoadingMore ? "Clasificando comentarios…" : "No hay comentarios en esta pestaña."}</p>

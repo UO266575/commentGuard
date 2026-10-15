@@ -1,8 +1,33 @@
+/* Inter, bundled locally (not a Google Fonts <link>) so the extension doesn't make a
+   live network request to Google on every page just to render its own UI. Covers the
+   Latin + Latin-Extended subsets (variable font, weights 100–900 in one file each);
+   anything outside that falls back to Roboto/Arial, already loaded by YouTube itself. */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/inter-latin.woff2") format("woff2-variations");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F,
+    U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/inter-latin-ext.woff2") format("woff2-variations");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+    U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
 /* Self-contained design tokens: deliberately NOT borrowed from YouTube's --yt-spec-*
    variables. Verified live (2026-10-15) that those don't behave as plain inherited CSS
    custom properties here, and that YouTube's dark theme is independent of
-   prefers-color-scheme — see ui/theme.ts for how data-theme actually gets set. The font
-   stack, though, is copied verbatim from YouTube's own computed style, for consistency. */
+   prefers-color-scheme — see ui/theme.ts for how data-theme actually gets set. */
 :host {
   --cg-bg: #ffffff;
   --cg-bg-raised: #f8f9fa;
@@ -16,14 +41,11 @@
   --cg-danger-bg: #fdecea;
   --cg-danger-text: #8c1d18;
   --cg-danger-border: #f3c6c2;
-  --cg-warning-bg: #fff4e5;
-  --cg-warning-text: #7a4a00;
-  --cg-warning-border: #ffdfa6;
   --cg-radius-lg: 16px;
   --cg-radius-md: 10px;
   --cg-radius-sm: 8px;
   --cg-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
-  --cg-font: Roboto, Arial, sans-serif;
+  --cg-font: "Inter", Roboto, Arial, sans-serif;
 
   display: block;
   font-family: var(--cg-font);
@@ -43,14 +65,12 @@
   --cg-danger-bg: #3c2422;
   --cg-danger-text: #f6a9a0;
   --cg-danger-border: #5c332e;
-  --cg-warning-bg: #3a2e18;
-  --cg-warning-text: #ffcc80;
-  --cg-warning-border: #5c4820;
   --cg-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   color-scheme: dark;
 }
 
 .cg-root {
+  position: relative; /* anchors the toxic-tab confirmation overlay */
   box-sizing: border-box;
   background: var(--cg-bg);
   color: var(--cg-text);
@@ -58,6 +78,50 @@
   border-radius: var(--cg-radius-lg);
   box-shadow: var(--cg-shadow-sm);
   padding: 20px;
+}
+
+.cg-modal-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: var(--cg-radius-lg);
+}
+
+.cg-modal {
+  max-width: 280px;
+  padding: 16px;
+  background: var(--cg-bg);
+  color: var(--cg-text);
+  border-radius: var(--cg-radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.cg-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.cg-modal-text {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--cg-text-secondary);
+}
+
+.cg-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .cg-intro {
@@ -195,19 +259,6 @@
 .cg-tab-count {
   font-weight: 400;
   opacity: 0.85;
-}
-
-.cg-warning {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 14px;
-  padding: 10px 14px;
-  border-radius: var(--cg-radius-sm);
-  border: 1px solid var(--cg-warning-border);
-  background: var(--cg-warning-bg);
-  color: var(--cg-warning-text);
-  font-size: 13px;
 }
 
 .cg-comment-list {
