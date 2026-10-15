@@ -54,7 +54,12 @@
           "type": "ENTITY_MUTATION_TYPE_REPLACE",
           "payload": {
             "commentEntityPayload": {
-              "properties": { "commentId": "c1", "content": { "content": "Great video!" }, "replyLevel": 0 },
+              "properties": {
+                "commentId": "c1",
+                "content": { "content": "Great video!" },
+                "replyLevel": 0,
+                "publishedTime": "2 days ago"
+              },
               "author": { "displayName": "@alice" },
               "toolbar": { "replyCount": "1" }
             }
@@ -76,7 +81,12 @@
           "type": "ENTITY_MUTATION_TYPE_REPLACE",
           "payload": {
             "commentEntityPayload": {
-              "properties": { "commentId": "c2", "content": { "content": "First!" }, "replyLevel": 0 },
+              "properties": {
+                "commentId": "c2",
+                "content": { "content": "First!" },
+                "replyLevel": 0,
+                "publishedTime": "1 hour ago"
+              },
               "author": { "displayName": "@bob" },
               "toolbar": { "replyCount": "0" }
             }

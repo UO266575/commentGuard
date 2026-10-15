@@ -1,13 +1,20 @@
-import { JEV_MODEL_VERSION, type CorrectionRequest, type RawComment, type Tab } from "@comment-classificator/shared";
+import { JEV_MODEL_VERSION, type CorrectionRequest, type Tab } from "@comment-classificator/shared";
 import { requestGoogleAccessToken } from "../auth/google-login";
 import { getStoredSessionToken, setStoredSessionToken } from "../auth/session-storage";
 import { classifyComments, loginWithGoogle, recordCorrection, UnauthenticatedError } from "../server/client";
 import { waitForBridgeData } from "../youtube/bridge-listener";
-import { fetchReplies as fetchRepliesPage, fetchTopLevelComments, type TopLevelComment } from "../youtube/comments-api";
+import {
+  fetchReplies as fetchRepliesPage,
+  fetchTopLevelComments,
+  type RepliesPage,
+  type TopLevelComment,
+} from "../youtube/comments-api";
 
 export interface ClassifiedComment {
   id: string;
   text: string;
+  author: string;
+  publishedTime: string;
   category: Tab;
   confidence: number;
   replyCount: string;
@@ -49,6 +56,8 @@ function mergeTextIntoResults(
     return {
       id: result.commentId,
       text: source?.text ?? "",
+      author: source?.author ?? "",
+      publishedTime: source?.publishedTime ?? "",
       category: result.category,
       confidence: result.confidence,
       replyCount: source?.replyCount ?? "0",
@@ -93,7 +102,7 @@ export async function* classifyVideoComments(
 
 // Replies are fetched only when the user expands a comment, and never classified — see
 // docs/ESPECIFICACION.md, "Respuestas: solo se clasifica el comentario principal".
-export async function fetchCommentReplies(continuation: string): Promise<{ replies: RawComment[]; nextContinuation: string | null }> {
+export async function fetchCommentReplies(continuation: string): Promise<RepliesPage> {
   const bridgeData = await waitForBridgeData();
   return fetchRepliesPage(continuation, bridgeData.apiKey, bridgeData.context);
 }

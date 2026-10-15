@@ -6,6 +6,10 @@ import type { RawComment } from "@comment-classificator/shared";
 const COMMENTS_ENDPOINT_PATH = "/youtubei/v1/next";
 
 export interface TopLevelComment extends RawComment {
+  // Display-only fields, never sent to the server (RawComment — just {id, text} — is what
+  // actually goes into the classify request body).
+  author: string;
+  publishedTime: string;
   // Raw as YouTube formats it ("985", "4.8M"...), for display only.
   replyCount: string;
   repliesContinuation: string | null;
@@ -16,8 +20,13 @@ export interface CommentsPage {
   nextContinuation: string | null;
 }
 
+export interface Reply extends RawComment {
+  author: string;
+  publishedTime: string;
+}
+
 export interface RepliesPage {
-  replies: RawComment[];
+  replies: Reply[];
   nextContinuation: string | null;
 }
 
@@ -26,6 +35,10 @@ interface CommentEntityPayload {
     commentId?: string;
     content?: { content?: string };
     replyLevel?: number;
+    publishedTime?: string;
+  };
+  author?: {
+    displayName?: string;
   };
   toolbar?: {
     replyCount?: string;
@@ -117,6 +130,8 @@ export function parseCommentsResponse(response: unknown): CommentsPage {
       return {
         id,
         text: payload.properties?.content?.content ?? "",
+        author: payload.author?.displayName ?? "",
+        publishedTime: payload.properties?.publishedTime ?? "",
         replyCount: payload.toolbar?.replyCount ?? "0",
         repliesContinuation: repliesContinuationById.get(id) ?? null,
       };
@@ -130,9 +145,14 @@ export function parseCommentsResponse(response: unknown): CommentsPage {
 // docs/ESPECIFICACION.md, "Respuestas: solo se clasifica el comentario principal".
 export function parseRepliesResponse(response: unknown): RepliesPage {
   const payloads = findAll<CommentEntityPayload>(response, "commentEntityPayload");
-  const replies: RawComment[] = payloads
+  const replies: Reply[] = payloads
     .filter((payload) => (payload.properties?.replyLevel ?? 0) > 0)
-    .map((payload) => ({ id: payload.properties?.commentId ?? "", text: payload.properties?.content?.content ?? "" }))
+    .map((payload) => ({
+      id: payload.properties?.commentId ?? "",
+      text: payload.properties?.content?.content ?? "",
+      author: payload.author?.displayName ?? "",
+      publishedTime: payload.properties?.publishedTime ?? "",
+    }))
     .filter((reply) => reply.id !== "");
 
   return { replies, nextContinuation: findNextPageContinuation(findThreadItems(response)) };
