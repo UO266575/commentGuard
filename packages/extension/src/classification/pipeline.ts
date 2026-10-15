@@ -1,6 +1,6 @@
 import { JEV_MODEL_VERSION, type CorrectionRequest, type Tab } from "@comment-classificator/shared";
 import { requestGoogleAccessToken } from "../auth/google-login";
-import { getStoredSessionToken, setStoredSessionToken } from "../auth/session-storage";
+import { clearStoredSessionToken, getStoredSessionToken, setStoredSessionToken } from "../auth/session-storage";
 import { classifyComments, loginWithGoogle, recordCorrection, UnauthenticatedError } from "../server/client";
 import { waitForBridgeData } from "../youtube/bridge-listener";
 import {
@@ -33,13 +33,17 @@ export async function ensureSessionToken(interactive: boolean): Promise<string> 
 
 // Runs an authenticated server call once, and if the stored session has expired, logs in
 // again (interactively, since re-authenticating silently isn't possible with
-// chrome.identity) and retries exactly once.
+// chrome.identity) and retries exactly once. Clearing the stored token before that retry
+// is the whole point: ensureSessionToken returns whatever's already in storage without
+// re-authenticating, so without this, the retry would just resend the same bad token and
+// fail the exact same way.
 async function withSession<T>(run: (sessionToken: string) => Promise<T>): Promise<T> {
   const sessionToken = await ensureSessionToken(true);
   try {
     return await run(sessionToken);
   } catch (error) {
     if (!(error instanceof UnauthenticatedError)) throw error;
+    await clearStoredSessionToken();
     const freshToken = await ensureSessionToken(true);
     return run(freshToken);
   }
