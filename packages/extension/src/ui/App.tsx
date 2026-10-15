@@ -341,14 +341,16 @@ export function App({ onUnfiltered, fetchClassifiedComments, fetchReplies, submi
     case "choice":
       return (
         <div class="cg-root">
-          <p class="cg-intro">¿Cómo quieres ver los comentarios?</p>
-          <div class="cg-buttons">
-            <button type="button" class="cg-button" onClick={onUnfiltered}>
-              Sin filtrar
-            </button>
-            <button type="button" class="cg-button cg-button--primary" onClick={() => loadComments()}>
-              Filtrados
-            </button>
+          <div class="cg-choice">
+            <p class="cg-intro">¿Cómo quieres ver los comentarios?</p>
+            <div class="cg-buttons">
+              <button type="button" class="cg-button" onClick={onUnfiltered}>
+                Sin filtrar
+              </button>
+              <button type="button" class="cg-button cg-button--primary" onClick={() => loadComments()}>
+                Filtrados
+              </button>
+            </div>
           </div>
         </div>
       );
