@@ -9,6 +9,7 @@
     "start": "node --env-file-if-exists=.env dist/index.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file-if-exists=.env src/db/migrate.ts",
+    "db:migrate:test": "tsx --env-file-if-exists=.env src/db/migrate-test.ts",
     "db:studio": "drizzle-kit studio",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

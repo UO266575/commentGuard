@@ -26,6 +26,10 @@ jobs:
 
     env:
       DATABASE_URL: postgres://comment_classificator:comment_classificator@localhost:5432/comment_classificator
+      # Same disposable database as above: CI's Postgres service only lives for this one
+      # run, so the dev/test separation that matters on a developer's machine (see
+      # packages/server/src/db/test-db.ts) doesn't apply here.
+      TEST_DATABASE_URL: postgres://comment_classificator:comment_classificator@localhost:5432/comment_classificator
       GOOGLE_CLIENT_ID: ci-placeholder
       SESSION_SECRET: ci-placeholder-session-secret-not-for-production
       MONTHLY_COMMENT_QUOTA: 1000
