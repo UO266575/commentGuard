@@ -13,7 +13,11 @@ export async function requestGoogleAccessToken(interactive: boolean): Promise<st
   } catch (error) {
     // Chrome doesn't document a stable error string for "no Google account in this
     // Chrome profile" (the most common cause here), so every failure gets the same
-    // actionable message instead of surfacing Chrome's raw, sometimes-cryptic text.
+    // actionable message instead of surfacing Chrome's raw, sometimes-cryptic text to the
+    // end user — but it's still logged for debugging, since Chrome's real message (e.g.
+    // "OAuth2 not granted or revoked", a bad client_id, a consent-screen test-user
+    // restriction...) is the fastest way to tell these apart.
+    console.error("[CommentGuard] chrome.identity.getAuthToken failed:", error);
     throw new Error(
       "No se pudo iniciar sesión con Google. Comprueba que has añadido una cuenta de Google a Chrome e inténtalo de nuevo.",
       { cause: error },
