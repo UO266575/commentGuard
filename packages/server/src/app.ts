@@ -4,7 +4,7 @@ import { z } from "zod";
 import { CONFIDENCE_THRESHOLD, JEV_MODEL_VERSION, UNCLASSIFIED, type ClassifyResponse } from "@comment-classificator/shared";
 import type { AppEnv } from "./app-env.js";
 import type { GoogleTokenVerifier } from "./auth/google.js";
-import { requireSession } from "./auth/middleware.js";
+import { createRequireSession } from "./auth/middleware.js";
 import { createSessionToken } from "./auth/session.js";
 import { getCachedClassifications, storeClassifications, type CachedClassification } from "./cache/repository.js";
 import { recordCorrection } from "./corrections/repository.js";
@@ -38,6 +38,7 @@ const correctionRequestSchema = z.object({
 
 export function createApp(deps: AppDependencies) {
   const app = new Hono<AppEnv>();
+  const requireSession = createRequireSession(deps.db);
 
   app.get("/health", (c) => c.json({ status: "ok" }));
 
