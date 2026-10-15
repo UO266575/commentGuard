@@ -33,6 +33,18 @@ const TAB_ICONS: Record<Tab, string> = {
   sin_clasificar: "❓",
 };
 
+// Keeps the tab bar from constantly reflowing as counts tick up while comments load in
+// the background: an unbounded number ("1234", "12345"...) keeps adding digits, each one
+// nudging every tab after it sideways. Abbreviating past 1000 caps how long the label can
+// ever get (paired with reserving a fixed width for it in CSS — see .cg-tab-count).
+export function formatTabCount(count: number): string {
+  if (count < 1000) return String(count);
+
+  const [divisor, suffix] = count < 1_000_000 ? [1_000, "k"] : [1_000_000, "M"];
+  const value = Math.round((count / divisor) * 10) / 10;
+  return (Number.isInteger(value) ? String(value) : value.toFixed(1)) + suffix;
+}
+
 function groupByTab(comments: ClassifiedComment[]): Map<Tab, ClassifiedComment[]> {
   const groups = new Map<Tab, ClassifiedComment[]>(TABS.map((tab) => [tab.id, []]));
   for (const comment of comments) groups.get(comment.category)?.push(comment);
@@ -256,7 +268,7 @@ function ResultsView({
               {TAB_ICONS[tab.id]}
             </span>
             {tab.label}
-            <span class="cg-tab-count">({groups.get(tab.id)?.length ?? 0})</span>
+            <span class="cg-tab-count">({formatTabCount(groups.get(tab.id)?.length ?? 0)})</span>
           </button>
         ))}
       </div>

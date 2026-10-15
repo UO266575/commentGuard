@@ -275,7 +275,15 @@
 }
 
 .cg-tab-count {
+  display: inline-block;
+  /* Fits "(999)" and the abbreviated form up to "(99.9k)" without growing further —
+     paired with formatTabCount() in App.tsx, which guarantees the label never gets
+     longer than that. Centered in its own reserved slot so the digits move within it
+     instead of pushing the rest of the tab bar sideways as counts change. */
+  min-width: 6ch;
+  text-align: center;
   font-weight: 400;
+  font-variant-numeric: tabular-nums;
   opacity: 0.85;
 }
 
