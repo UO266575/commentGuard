@@ -27,7 +27,7 @@ const TAB_ICONS: Record<Tab, string> = {
   positivo: "👍",
   constructivo: "💡",
   neutral: "💬",
-  irrelevante: "🚫",
+  spam: "🚫",
   negativo: "👎",
   toxico: "⚠️",
   sin_clasificar: "❓",

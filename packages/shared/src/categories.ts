@@ -3,7 +3,7 @@ export const CATEGORIES = [
   "positivo",
   "constructivo",
   "neutral",
-  "irrelevante",
+  "spam",
   "negativo",
   "toxico",
 ] as const;
@@ -29,7 +29,7 @@ export const TABS: readonly TabDefinition[] = [
   { id: "positivo", label: "Positivos" },
   { id: "constructivo", label: "Dudas, sugerencias y crítica constructiva" },
   { id: "neutral", label: "Neutrales" },
-  { id: "irrelevante", label: "Irrelevantes" },
+  { id: "spam", label: "Spam o bots" },
   { id: "negativo", label: "Negativos" },
   { id: "toxico", label: "Tóxicos" },
   { id: UNCLASSIFIED, label: "Sin clasificar" },

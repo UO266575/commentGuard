@@ -9,12 +9,13 @@ const RETRYABLE_STATUSES = new Set([429, 529]);
 const MAX_ATTEMPTS = 4;
 
 const CATEGORY_CRITERIA: Record<Category, string> = {
-  positivo: "Admiration, gratitude, or support for the video or its creator.",
-  constructivo: "Questions, suggestions, or criticism meant to help the creator improve.",
-  neutral: "Comments about the topic or something else, without expressing an opinion.",
-  irrelevante: "Off-topic comments, bots, or spam.",
-  negativo: "Negative or dismissive tone, without being toxic.",
-  toxico: "Insults, harassment, discrimination, or threats.",
+  positivo: "Praise, thanks or support for the creator or the video.",
+  constructivo:
+    "A genuine question, request or suggestion addressed to the creator about the content, or criticism that explains how to improve it. Rhetorical questions, jokes and memes such as 'who's watching in 2026?' do not count.",
+  neutral: "Talks about the topic, shares an anecdote, makes a joke or a meme, or reacts without giving an opinion about the creator or the video.",
+  spam: "Scams, money offers, links, self-promotion, or text that looks automated.",
+  negativo: "A negative or dismissive opinion about the creator or the video, without insults and without explaining how to improve.",
+  toxico: "Insults, harassment, discrimination, threats or hateful attacks.",
 };
 
 export interface JevInput {

@@ -23,8 +23,33 @@ describe("createJevClient", () => {
     expect(body.model).toBe("jev-1.13.0");
     expect(body.state).toEqual({ platform: "YouTube", video_title: "Mi vídeo", comment: "Qué mal" });
     expect(Object.keys(body.questions.category.criteria).sort()).toEqual(
-      ["constructivo", "irrelevante", "negativo", "neutral", "positivo", "toxico"].sort(),
+      ["constructivo", "spam", "negativo", "neutral", "positivo", "toxico"].sort(),
     );
+  });
+
+  // Regression test: "Why YouTube?" is a joke, not a real question to the creator, and
+  // was misclassified as constructivo (64% confidence) in the Jev Playground before the
+  // criteria below excluded rhetorical questions/jokes/memes from that category.
+  it("sends the updated category definitions for a joke that isn't really a question to the creator", async () => {
+    const fetchImpl = vi.fn(async (_input: string | URL | Request, _init?: RequestInit) => jsonResponse(200, successBody));
+    const client = createJevClient("api-key", { fetchImpl });
+    const comment = "Okay guys I'm on the 1st of September of 2026, and... Why YouTube?";
+
+    await client.classify({ videoTitle: "t", comment });
+
+    const [, init] = fetchImpl.mock.calls[0]!;
+    const body = JSON.parse(init?.body as string);
+    expect(body.state.comment).toBe(comment);
+    expect(body.questions.category.criteria).toEqual({
+      positivo: "Praise, thanks or support for the creator or the video.",
+      constructivo:
+        "A genuine question, request or suggestion addressed to the creator about the content, or criticism that explains how to improve it. Rhetorical questions, jokes and memes such as 'who's watching in 2026?' do not count.",
+      neutral:
+        "Talks about the topic, shares an anecdote, makes a joke or a meme, or reacts without giving an opinion about the creator or the video.",
+      spam: "Scams, money offers, links, self-promotion, or text that looks automated.",
+      negativo: "A negative or dismissive opinion about the creator or the video, without insults and without explaining how to improve.",
+      toxico: "Insults, harassment, discrimination, threats or hateful attacks.",
+    });
   });
 
   it("returns the chosen category and confidence from a successful response", async () => {
