@@ -11,7 +11,7 @@ describe("categories", () => {
       "positivo",
       "constructivo",
       "neutral",
-      "irrelevante",
+      "spam",
       "negativo",
       "toxico",
       UNCLASSIFIED,

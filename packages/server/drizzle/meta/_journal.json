@@ -15,6 +15,13 @@
       "when": 1792015186634,
       "tag": "0001_robust_doctor_octopus",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792132022146,
+      "tag": "0002_mixed_typhoid_mary",
+      "breakpoints": true
     }
   ]
 }

@@ -31,9 +31,9 @@ Cada comentario principal recibe exactamente una de seis categorías fijas; si J
 | # | Pestaña | Qué incluye |
 | --- | --- | --- |
 | 1 | Positivos | Admiración, agradecimiento o apoyo. |
-| 2 | Dudas, sugerencias y crítica constructiva | Preguntas, propuestas de mejora y críticas con intención de ayudar. |
-| 3 | Neutrales | Hablan del tema u otro asunto sin dar opinión. |
-| 4 | Irrelevantes | Fuera de tema, bots y spam. |
+| 2 | Dudas, sugerencias y crítica constructiva | Preguntas, propuestas de mejora y críticas con intención de ayudar, dirigidas de verdad a quien crea el vídeo. No incluye preguntas retóricas ni bromas, como "¿quién lo ve en 2026?". |
+| 3 | Neutrales | Hablan del tema u otro asunto, cuentan una anécdota o hacen una broma, sin dar opinión sobre quien crea el contenido o el vídeo. |
+| 4 | Spam o bots | Estafas, ofertas de dinero, enlaces, autopromoción o texto que parece automatizado. |
 | 5 | Negativos | Tono negativo o despectivo sin llegar a ser tóxico. |
 | 6 | Tóxicos | Insultos, acoso, discriminación y amenazas. |
 | 7 | Sin clasificar | Confianza de Jev por debajo del 50 %. |
@@ -75,7 +75,7 @@ Ejemplo de petición y respuesta:
     "category": {
       "type": "choice",
       "instructions": "Classify this YouTube comment, written to the video's creator, into the single best category.",
-      "criteria": { "positivo": "…", "constructivo": "…", "neutral": "…", "irrelevante": "…", "negativo": "…", "toxico": "…" }
+      "criteria": { "positivo": "…", "constructivo": "…", "neutral": "…", "spam": "…", "negativo": "…", "toxico": "…" }
     }
   }
 }
