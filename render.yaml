@@ -3,7 +3,7 @@ services:
     name: comment-classificator-server
     runtime: node
     plan: free
-    region: oregon
+    region: frankfurt
     # Runs from the repo root (this is a pnpm workspace monorepo): installs every
     # package's dependencies, then builds only the server. See
     # packages/server/package.json's "build" script — it bundles with esbuild so the
