@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: comment-classificator-server
+    runtime: node
+    plan: free
+    region: oregon
+    # Runs from the repo root (this is a pnpm workspace monorepo): installs every
+    # package's dependencies, then builds only the server. See
+    # packages/server/package.json's "build" script — it bundles with esbuild so the
+    # workspace-linked @comment-classificator/shared package (which has no build step of
+    # its own) ends up inlined into dist/index.js instead of left as an unresolvable
+    # source import at runtime.
+    buildCommand: corepack enable && corepack prepare pnpm@12.11.2 --activate && pnpm install --frozen-lockfile && pnpm --filter @comment-classificator/server run build
+    startCommand: node packages/server/dist/index.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      # Render injects PORT itself; the server already reads it via env.ts's getPort().
+      - key: DATABASE_URL
+        sync: false # Neon connection string, e.g. postgres://user:pass@host/db?sslmode=require
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: JEV_API_KEY
+        sync: false
+      - key: JEV_MOCK_MODE
+        value: "false"
+      - key: MONTHLY_COMMENT_QUOTA
+        value: "1000" # Provisional — see docs/ESPECIFICACION.md, "Modelo de negocio y puntos abiertos".
