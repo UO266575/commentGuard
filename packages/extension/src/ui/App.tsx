@@ -7,7 +7,9 @@ type ViewState =
   | { kind: "choice" }
   // Only shown before the very first batch arrives — once there's anything to show, the
   // rest loads in the background while the user reads (see ResultsView's isLoadingMore).
-  | { kind: "loading" }
+  // `slow` flips on after a few seconds with nothing back yet — most likely because the
+  // server is a free-tier host waking back up from sleep, not because anything's broken.
+  | { kind: "loading"; slow: boolean }
   | { kind: "results"; comments: ClassifiedComment[]; nextContinuation: string | null; isLoadingMore: boolean }
   | { kind: "error"; message: string };
 
@@ -331,14 +333,22 @@ export function App({ onUnfiltered, fetchClassifiedComments, fetchReplies, submi
   async function loadComments(continuation?: string) {
     const isInitialLoad = !continuation;
     const startingCount = !isInitialLoad && state.kind === "results" ? state.comments.length : 0;
-    if (isInitialLoad) setState({ kind: "loading" });
+    if (isInitialLoad) setState({ kind: "loading", slow: false });
     setLastLoadedCount(null);
+
+    // Only matters for the very first request of a session: if the server is a free-tier
+    // host that's been asleep, waking it back up can take close to a minute — this swaps
+    // the generic "loading" copy for one that explains the wait instead of looking stuck.
+    const slowConnectionTimer = isInitialLoad
+      ? setTimeout(() => setState((prev) => (prev.kind === "loading" ? { kind: "loading", slow: true } : prev)), 4000)
+      : undefined;
 
     let collected = !isInitialLoad && state.kind === "results" ? [...state.comments] : [];
 
     try {
       const iterator = fetchClassifiedComments(continuation);
       let result = await iterator.next();
+      clearTimeout(slowConnectionTimer);
       while (!result.done) {
         collected = [...collected, ...result.value];
         setState({ kind: "results", comments: collected, nextContinuation: null, isLoadingMore: true });
@@ -349,6 +359,7 @@ export function App({ onUnfiltered, fetchClassifiedComments, fetchReplies, submi
       // Only for "Cargar más": the initial load's own appearance is feedback enough.
       if (!isInitialLoad) setLastLoadedCount(collected.length - startingCount);
     } catch (error) {
+      clearTimeout(slowConnectionTimer);
       const message = error instanceof Error ? error.message : "Error desconocido";
       if (collected.length > 0) {
         // Keep what's already loaded on screen; only report that the rest failed.
@@ -391,7 +402,9 @@ export function App({ onUnfiltered, fetchClassifiedComments, fetchReplies, submi
         <div class="cg-root">
           <p class="cg-loading">
             <Spinner />
-            Cargando los primeros comentarios…
+            {state.slow
+              ? "Conectando con el servidor… puede tardar hasta un minuto si llevaba un rato sin uso."
+              : "Cargando los primeros comentarios…"}
           </p>
         </div>
       );
