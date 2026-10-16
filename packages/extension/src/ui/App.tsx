@@ -211,6 +211,11 @@ interface ResultsViewProps {
   nextContinuation: string | null;
   isLoadingMore: boolean;
   backgroundLoadError: string | null;
+  // Set right after a "Cargar más" finishes, so the user gets some confirmation it
+  // actually did something — the new comments usually land mostly in tabs other than
+  // whichever one is open, where they'd otherwise go unnoticed and the button could look
+  // like it didn't work at all.
+  lastLoadedCount: number | null;
   onLoadMore: () => void;
   onCorrected: (commentId: string, category: Tab) => void;
   fetchReplies: AppProps["fetchReplies"];
@@ -222,6 +227,7 @@ function ResultsView({
   nextContinuation,
   isLoadingMore,
   backgroundLoadError,
+  lastLoadedCount,
   onLoadMore,
   onCorrected,
   fetchReplies,
@@ -302,6 +308,13 @@ function ResultsView({
         )
       )}
       {backgroundLoadError && <p class="cg-error">No se pudieron cargar más comentarios: {backgroundLoadError}</p>}
+      {!isLoadingMore && lastLoadedCount !== null && (
+        <p class="cg-intro">
+          {lastLoadedCount > 0
+            ? `Se ${lastLoadedCount === 1 ? "ha añadido 1 comentario nuevo" : `han añadido ${lastLoadedCount} comentarios nuevos`}, repartidos entre las pestañas.`
+            : "No se encontraron comentarios nuevos."}
+        </p>
+      )}
     </div>
   );
 }
@@ -309,6 +322,7 @@ function ResultsView({
 export function App({ onUnfiltered, fetchClassifiedComments, fetchReplies, submitCorrection }: AppProps) {
   const [state, setState] = useState<ViewState>({ kind: "choice" });
   const [backgroundLoadError, setBackgroundLoadError] = useState<string | null>(null);
+  const [lastLoadedCount, setLastLoadedCount] = useState<number | null>(null);
 
   // Used for both the initial "Filtrados" click (continuation undefined) and "Cargar
   // más" (continuation set): either way, comments already on screen stay there — new
@@ -316,7 +330,9 @@ export function App({ onUnfiltered, fetchClassifiedComments, fetchReplies, submi
   // so the user can start reading the first batch while the rest loads in the background.
   async function loadComments(continuation?: string) {
     const isInitialLoad = !continuation;
+    const startingCount = !isInitialLoad && state.kind === "results" ? state.comments.length : 0;
     if (isInitialLoad) setState({ kind: "loading" });
+    setLastLoadedCount(null);
 
     let collected = !isInitialLoad && state.kind === "results" ? [...state.comments] : [];
 
@@ -330,12 +346,15 @@ export function App({ onUnfiltered, fetchClassifiedComments, fetchReplies, submi
       }
       setState({ kind: "results", comments: collected, nextContinuation: result.value, isLoadingMore: false });
       setBackgroundLoadError(null);
+      // Only for "Cargar más": the initial load's own appearance is feedback enough.
+      if (!isInitialLoad) setLastLoadedCount(collected.length - startingCount);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error desconocido";
       if (collected.length > 0) {
         // Keep what's already loaded on screen; only report that the rest failed.
         setState({ kind: "results", comments: collected, nextContinuation: null, isLoadingMore: false });
         setBackgroundLoadError(message);
+        if (!isInitialLoad) setLastLoadedCount(collected.length - startingCount);
       } else {
         setState({ kind: "error", message });
       }
@@ -394,6 +413,7 @@ export function App({ onUnfiltered, fetchClassifiedComments, fetchReplies, submi
           nextContinuation={state.nextContinuation}
           isLoadingMore={state.isLoadingMore}
           backgroundLoadError={backgroundLoadError}
+          lastLoadedCount={lastLoadedCount}
           onLoadMore={() => loadComments(state.nextContinuation ?? undefined)}
           onCorrected={handleCorrected}
           fetchReplies={fetchReplies}
