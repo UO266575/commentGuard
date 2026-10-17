@@ -4,6 +4,7 @@ import { clearStoredSessionToken, getStoredSessionToken, setStoredSessionToken }
 import { classifyComments, loginWithGoogle, recordCorrection, UnauthenticatedError } from "../server/client";
 import { waitForBridgeData } from "../youtube/bridge-listener";
 import {
+  fetchInitialCommentsContinuation,
   fetchReplies as fetchRepliesPage,
   fetchTopLevelComments,
   type RepliesPage,
@@ -84,7 +85,13 @@ export async function* classifyVideoComments(
   startContinuation?: string,
 ): AsyncGenerator<ClassifiedComment[], string | null> {
   const bridgeData = await waitForBridgeData();
-  const continuation = startContinuation ?? bridgeData.initialContinuation;
+  // Never trust a bridge-provided continuation for the first page: `window.ytInitialData`
+  // (where the bridge would otherwise scrape it) is frozen at whatever video the page
+  // first loaded with, and YouTube's own SPA router never refreshes it — so after
+  // navigating to another video client-side, it would silently keep returning the
+  // *previous* video's comments. Asking for this specific videoId directly sidesteps that
+  // entirely, whether this is the first video on the page or the fifth.
+  const continuation = startContinuation ?? (await fetchInitialCommentsContinuation(videoId, bridgeData.apiKey, bridgeData.context));
   if (!continuation) {
     throw new Error("No se encontró la sección de comentarios de este vídeo.");
   }

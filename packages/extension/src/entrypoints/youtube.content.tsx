@@ -69,12 +69,20 @@ export default defineContentScript({
     // autoMount's anchor-presence watcher never sees it disappear/reappear and never
     // remounts. Without this, the App instance (and its "which video" closures) would
     // keep showing the previous video's comments and tab/filter selection until a full
-    // page reload. `wxt:locationchange` is WXT's own SPA-navigation signal for exactly
-    // this case; removing and re-auto-mounting forces a fresh onRemove/onMount cycle
-    // (the anchor already exists, so autoMount's mount() runs immediately and
-    // synchronously) which resets the App to its initial state for the new video.
+    // page reload.
+    //
+    // WXT's own `wxt:locationchange` event (built on the Navigation API) turned out not
+    // to fire reliably here — most likely because this content script runs in the
+    // isolated world, where `window.navigation` isn't guaranteed to reflect
+    // navigations the page's main-world scripts trigger via `history.pushState`.
+    // `yt-navigate-finish` is YouTube's own SPA-navigation signal, dispatched on
+    // `document` — shared with the page regardless of world — and was confirmed live to
+    // fire reliably for this exact case. Removing and re-auto-mounting forces a fresh
+    // onRemove/onMount cycle (the anchor already exists, so autoMount's mount() runs
+    // immediately and synchronously) which resets the App to its initial state for the
+    // new video.
     let lastVideoId = currentVideoId();
-    ctx.addEventListener(window, "wxt:locationchange", () => {
+    ctx.addEventListener(document, "yt-navigate-finish", () => {
       const videoId = currentVideoId();
       if (videoId === lastVideoId) return;
       lastVideoId = videoId;

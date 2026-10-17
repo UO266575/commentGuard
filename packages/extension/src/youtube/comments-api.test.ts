@@ -1,8 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
-import { fetchReplies, fetchTopLevelComments, parseCommentsResponse, parseRepliesResponse } from "./comments-api";
+import {
+  fetchInitialCommentsContinuation,
+  fetchReplies,
+  fetchTopLevelComments,
+  parseCommentsResponse,
+  parseRepliesResponse,
+} from "./comments-api";
 import page1 from "./fixtures/comments-response-page1.sample.json";
 import page2 from "./fixtures/comments-response-page2.sample.json";
 import repliesResponse from "./fixtures/replies-response.sample.json";
+import nextResponse from "./fixtures/yt-initial-data.sample.json";
 
 describe("parseCommentsResponse", () => {
   it("extracts only top-level comments, skipping replies and other entity types", () => {
@@ -78,6 +85,43 @@ describe("fetchReplies", () => {
 
     expect(result.replies).toHaveLength(2);
     expect(result.nextContinuation).toBe("SAMPLE_MORE_REPLIES_TOKEN");
+  });
+});
+
+describe("fetchInitialCommentsContinuation", () => {
+  // Regression: this must ask YouTube for `videoId` specifically rather than reusing
+  // whatever the page happened to load with — see pipeline.ts's classifyVideoComments,
+  // which calls this on every "Filtrados" click (including after an in-page SPA
+  // navigation to a different video) instead of trusting a cached continuation.
+  it("requests the comments continuation for the given video id", async () => {
+    const fetchImpl = vi.fn(async (_input: string | URL | Request, _init?: RequestInit) => ({
+      ok: true,
+      json: async () => nextResponse,
+    }));
+
+    const result = await fetchInitialCommentsContinuation(
+      "video-2",
+      "key",
+      { some: "context" },
+      fetchImpl as unknown as typeof fetch,
+    );
+
+    expect(result).toBe("SAMPLE_TOP_SORT_TOKEN");
+    const [url, init] = fetchImpl.mock.calls[0]!;
+    expect(url).toBe("https://www.youtube.com/youtubei/v1/next?key=key");
+    expect(JSON.parse(init?.body as string)).toEqual({ context: { some: "context" }, videoId: "video-2" });
+  });
+
+  it("returns null when the response has no comments section", async () => {
+    const fetchImpl = vi.fn(async () => ({ ok: true, json: async () => ({}) })) as unknown as typeof fetch;
+
+    await expect(fetchInitialCommentsContinuation("video-2", "key", {}, fetchImpl)).resolves.toBeNull();
+  });
+
+  it("throws when YouTube responds with a non-ok status", async () => {
+    const fetchImpl = vi.fn(async () => ({ ok: false, status: 500 })) as unknown as typeof fetch;
+
+    await expect(fetchInitialCommentsContinuation("video-2", "key", {}, fetchImpl)).rejects.toThrow("500");
   });
 });
 
