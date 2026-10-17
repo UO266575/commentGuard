@@ -1,7 +1,7 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
-import { CONFIDENCE_THRESHOLD, JEV_MODEL_VERSION, UNCLASSIFIED, type ClassifyResponse } from "@comment-classificator/shared";
+import { CONFIDENCE_THRESHOLD, UNCLASSIFIED, type ClassifyResponse } from "@comment-classificator/shared";
 import type { AppEnv } from "./app-env.js";
 import type { GoogleTokenVerifier } from "./auth/google.js";
 import { createRequireSession } from "./auth/middleware.js";
@@ -10,7 +10,7 @@ import { getCachedClassifications, storeClassifications, type CachedClassificati
 import { recordCorrection } from "./corrections/repository.js";
 import type { Database } from "./db/client.js";
 import { TAB_VALUES } from "./db/schema.js";
-import type { JevClient } from "./jev/client.js";
+import { JEV_FULL_MODEL_VERSION, type JevClient } from "./jev/client.js";
 import { consumeQuota, getRemainingQuota } from "./quota/repository.js";
 import { findOrCreateUser } from "./users/repository.js";
 
@@ -64,6 +64,7 @@ export function createApp(deps: AppDependencies) {
     const cached = await getCachedClassifications(
       deps.db,
       comments.map((comment) => comment.id),
+      JEV_FULL_MODEL_VERSION,
     );
     const uncached = comments.filter((comment) => !cached.has(comment.id));
 
@@ -85,11 +86,11 @@ export function createApp(deps: AppDependencies) {
               commentId: comment.id,
               category: confidence >= CONFIDENCE_THRESHOLD ? category : UNCLASSIFIED,
               confidence,
-              modelVersion: JEV_MODEL_VERSION,
+              modelVersion: JEV_FULL_MODEL_VERSION,
             };
           } catch {
             // A comment that Jev couldn't classify (after retries) also goes to "Sin clasificar".
-            return { commentId: comment.id, category: UNCLASSIFIED, confidence: 0, modelVersion: JEV_MODEL_VERSION };
+            return { commentId: comment.id, category: UNCLASSIFIED, confidence: 0, modelVersion: JEV_FULL_MODEL_VERSION };
           }
         }),
       );

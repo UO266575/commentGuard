@@ -8,6 +8,17 @@ const JEV_ENDPOINT = "https://api.typesafe.ai/v1/systemone";
 const RETRYABLE_STATUSES = new Set([429, 529]);
 const MAX_ATTEMPTS = 4;
 
+// Bumped whenever CATEGORY_CRITERIA or the instructions below change meaning, so cached
+// classifications made under an older wording don't linger for up to 60 days looking like
+// they were judged by criteria that no longer apply — see cache/repository.ts, which
+// treats a cache entry's model_version as a cache miss if it doesn't match
+// JEV_FULL_MODEL_VERSION below.
+export const CRITERIA_VERSION = 2;
+export const JEV_FULL_MODEL_VERSION = `${JEV_MODEL_VERSION}+c${CRITERIA_VERSION}`;
+
+const CLASSIFICATION_INSTRUCTIONS =
+  "Classify this YouTube comment, written to the video's creator, into the single best category. Comments can be in any language, often Spanish from Spain, and use slang, irony and colloquial expressions. Judge the intended meaning, not the literal words: \"pedazo serie\", \"brutal\", \"tremendo vídeo\", \"qué crack\" or \"me flipa\" are praise; \"vaya truño\" or \"menuda basura\" are negative.";
+
 const CATEGORY_CRITERIA: Record<Category, string> = {
   positivo: "Praise, thanks or support for the creator or the video.",
   constructivo:
@@ -72,8 +83,7 @@ export function createJevClient(apiKey: string, options: CreateJevClientOptions 
               questions: {
                 category: {
                   type: "choice",
-                  instructions:
-                    "Classify this YouTube comment, written to the video's creator, into the single best category.",
+                  instructions: CLASSIFICATION_INSTRUCTIONS,
                   criteria: CATEGORY_CRITERIA,
                 },
               },

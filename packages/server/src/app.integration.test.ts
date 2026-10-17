@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "./app.js";
 import type { GoogleTokenVerifier } from "./auth/google.js";
+import { storeClassifications } from "./cache/repository.js";
 import { createDatabase, type DatabaseHandle } from "./db/client.js";
 import { users } from "./db/schema.js";
 import { testDatabaseUrl, truncateAll } from "./db/test-db.js";
@@ -148,6 +149,35 @@ describe.skipIf(!url)("auth + classify flow", () => {
     await app.request("/api/classify", request);
 
     expect(callCount).toBe(1);
+    expect(await getRemainingQuota(handle.db, fakeIdentity.googleSub, 1000)).toBe(999);
+  });
+
+  // Regression: a comment cached under an older set of Jev criteria (model_version) used
+  // to be treated as a fresh cache hit for up to 60 days, keeping a category that was
+  // judged by wording that no longer applies — see jev/client.ts's CRITERIA_VERSION.
+  it("reclassifies a comment cached under an older model version instead of trusting it", async () => {
+    let callCount = 0;
+    const countingJevClient: JevClient = {
+      classify: async () => {
+        callCount += 1;
+        return { category: "positivo", confidence: 0.9 };
+      },
+    };
+    const app = createApp({ db: handle.db, googleVerifier: fakeVerifier, jevClient: countingJevClient, monthlyQuota: 1000 });
+    const sessionToken = await login(app);
+
+    await storeClassifications(handle.db, [
+      { commentId: "c1", category: "negativo", confidence: 0.7, modelVersion: "jev-1.13.0+c1" },
+    ]);
+
+    const res = await app.request("/api/classify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({ videoId: "v1", videoTitle: "t", comments: [{ id: "c1", text: "pedazo serie" }] }),
+    });
+
+    expect(callCount).toBe(1);
+    expect(await res.json()).toEqual({ results: [{ commentId: "c1", category: "positivo", confidence: 0.9 }] });
     expect(await getRemainingQuota(handle.db, fakeIdentity.googleSub, 1000)).toBe(999);
   });
 
