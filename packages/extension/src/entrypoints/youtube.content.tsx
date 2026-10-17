@@ -62,5 +62,24 @@ export default defineContentScript({
     });
 
     ui.autoMount();
+
+    // YouTube is a single-page app: clicking through to another video reuses the same
+    // #comments element instead of removing and recreating it (verified live via
+    // claude-in-chrome — a marker attribute set on it survives SPA navigation), so
+    // autoMount's anchor-presence watcher never sees it disappear/reappear and never
+    // remounts. Without this, the App instance (and its "which video" closures) would
+    // keep showing the previous video's comments and tab/filter selection until a full
+    // page reload. `wxt:locationchange` is WXT's own SPA-navigation signal for exactly
+    // this case; removing and re-auto-mounting forces a fresh onRemove/onMount cycle
+    // (the anchor already exists, so autoMount's mount() runs immediately and
+    // synchronously) which resets the App to its initial state for the new video.
+    let lastVideoId = currentVideoId();
+    ctx.addEventListener(window, "wxt:locationchange", () => {
+      const videoId = currentVideoId();
+      if (videoId === lastVideoId) return;
+      lastVideoId = videoId;
+      ui.remove();
+      ui.autoMount();
+    });
   },
 });
