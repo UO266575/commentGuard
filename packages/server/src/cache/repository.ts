@@ -18,12 +18,16 @@ function isFresh(createdAt: Date, now: Date): boolean {
   return now.getTime() - createdAt.getTime() < CACHE_TTL_MS;
 }
 
-// Entries older than the TTL are treated as a cache miss rather than actively deleted on
-// every read; deleteExpiredCacheEntries does the actual cleanup and is meant to run on a
-// schedule (not wired up yet — see docs/ESPECIFICACION.md "Caducidad").
+// Entries older than the TTL, or classified under a different model_version, are treated
+// as a cache miss rather than actively deleted/rewritten on every read;
+// deleteExpiredCacheEntries does the TTL cleanup and is meant to run on a schedule (not
+// wired up yet — see docs/ESPECIFICACION.md "Caducidad"). A version mismatch gets
+// overwritten in place the next time that comment is classified, since storeClassifications
+// upserts by commentId.
 export async function getCachedClassifications(
   db: Database,
   commentIds: string[],
+  expectedModelVersion: string,
   now = new Date(),
 ): Promise<Map<string, CachedClassification>> {
   if (commentIds.length === 0) return new Map();
@@ -35,7 +39,7 @@ export async function getCachedClassifications(
 
   const result = new Map<string, CachedClassification>();
   for (const row of rows) {
-    if (isFresh(row.createdAt, now)) {
+    if (row.modelVersion === expectedModelVersion && isFresh(row.createdAt, now)) {
       result.set(row.commentId, {
         commentId: row.commentId,
         category: row.category,

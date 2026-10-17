@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { createJevClient } from "./client.js";
+import { JEV_MODEL_VERSION } from "@comment-classificator/shared";
+import { createJevClient, CRITERIA_VERSION, JEV_FULL_MODEL_VERSION } from "./client.js";
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -50,6 +51,29 @@ describe("createJevClient", () => {
       negativo: "A negative or dismissive opinion about the creator or the video, without insults and without explaining how to improve.",
       toxico: "Insults, harassment, discrimination, threats or hateful attacks.",
     });
+  });
+
+  // Regression: "pedazo serie" (praise, Spanish slang) was coming back as negativo —
+  // Jev was judging the literal words ("pedazo" = "piece/chunk") instead of the intended
+  // meaning. The instructions now explicitly call out Spanish slang/irony and this exact
+  // phrase as an example of praise.
+  it("sends instructions covering Spanish slang for a comment using it", async () => {
+    const fetchImpl = vi.fn(async (_input: string | URL | Request, _init?: RequestInit) => jsonResponse(200, successBody));
+    const client = createJevClient("api-key", { fetchImpl });
+    const comment = "pedazo serie";
+
+    await client.classify({ videoTitle: "t", comment });
+
+    const [, init] = fetchImpl.mock.calls[0]!;
+    const body = JSON.parse(init?.body as string);
+    expect(body.state.comment).toBe(comment);
+    expect(body.questions.category.instructions).toBe(
+      "Classify this YouTube comment, written to the video's creator, into the single best category. Comments can be in any language, often Spanish from Spain, and use slang, irony and colloquial expressions. Judge the intended meaning, not the literal words: \"pedazo serie\", \"brutal\", \"tremendo vídeo\", \"qué crack\" or \"me flipa\" are praise; \"vaya truño\" or \"menuda basura\" are negative.",
+    );
+  });
+
+  it("exports the model version used by the Jev API alongside a criteria version for cache invalidation", () => {
+    expect(JEV_FULL_MODEL_VERSION).toBe(`${JEV_MODEL_VERSION}+c${CRITERIA_VERSION}`);
   });
 
   it("returns the chosen category and confidence from a successful response", async () => {
