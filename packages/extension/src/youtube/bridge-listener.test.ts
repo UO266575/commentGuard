@@ -4,7 +4,7 @@ import { BRIDGE_DATA_EVENT } from "./bridge-events";
 import { resetBridgeDataForTests, waitForBridgeData } from "./bridge-listener";
 import type { BridgeData } from "./bridge-data";
 
-const sample: BridgeData = { apiKey: "key", context: {}, initialContinuation: "token" };
+const sample: BridgeData = { apiKey: "key", context: {} };
 
 function dispatch(data: BridgeData) {
   document.dispatchEvent(new CustomEvent(BRIDGE_DATA_EVENT, { detail: data }));

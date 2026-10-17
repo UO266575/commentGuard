@@ -1,10 +1,10 @@
-import { findInitialCommentsContinuation, type BridgeData } from "../youtube/bridge-data";
+import type { BridgeData } from "../youtube/bridge-data";
 import { BRIDGE_DATA_EVENT } from "../youtube/bridge-events";
 
 // Runs in the page's own MAIN world (unlike youtube.content.tsx) so it can read the
-// `ytcfg`/`ytInitialData` globals YouTube's own scripts set on `window`. It never touches
-// the DOM beyond dispatching one event, keeping the extension's footprint in the page
-// context as small as possible.
+// `ytcfg` global YouTube's own scripts set on `window`. It never touches the DOM beyond
+// dispatching one event, keeping the extension's footprint in the page context as small
+// as possible.
 interface YtCfg {
   get(key: "INNERTUBE_API_KEY"): string | undefined;
   get(key: "INNERTUBE_CONTEXT"): unknown;
@@ -13,7 +13,6 @@ interface YtCfg {
 declare global {
   interface Window {
     ytcfg?: YtCfg;
-    ytInitialData?: unknown;
   }
 }
 
@@ -22,11 +21,7 @@ function readBridgeData(): BridgeData | null {
   const context = window.ytcfg?.get("INNERTUBE_CONTEXT");
   if (!apiKey || !context) return null;
 
-  return {
-    apiKey,
-    context,
-    initialContinuation: findInitialCommentsContinuation(window.ytInitialData),
-  };
+  return { apiKey, context };
 }
 
 const REBROADCAST_ATTEMPTS = 20;

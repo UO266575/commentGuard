@@ -1,4 +1,5 @@
 import type { RawComment } from "@comment-classificator/shared";
+import { findInitialCommentsContinuation } from "./bridge-data";
 
 // YouTube's unofficial, internal "next" endpoint. Not part of the public Data API, so it
 // can change shape without notice — see docs/ESPECIFICACION.md, section "Obtención de
@@ -189,6 +190,35 @@ export async function fetchCommentsPage({
   }
 
   return response.json();
+}
+
+// `window.ytInitialData` (what the MAIN-world bridge otherwise scrapes) is only correct
+// for the very first video of a page load: YouTube is a single-page app, and navigating
+// to another video client-side never reassigns that global, so the sort-menu
+// continuation found there goes stale the moment the user clicks a related video. Asking
+// this same "next" endpoint for `videoId` directly (no continuation, exactly like the
+// real watch page does when it first loads) returns the comments continuation for
+// *that* video specifically, regardless of when or how it was reached — confirmed live
+// to differ from the stale `ytInitialData` value after an in-page navigation.
+export async function fetchInitialCommentsContinuation(
+  videoId: string,
+  apiKey: string,
+  context: unknown,
+  fetchImpl: typeof fetch = fetch,
+): Promise<string | null> {
+  const url = `https://www.youtube.com${COMMENTS_ENDPOINT_PATH}?key=${encodeURIComponent(apiKey)}`;
+
+  const response = await fetchImpl(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ context, videoId }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`YouTube comments request failed with status ${response.status}`);
+  }
+
+  return findInitialCommentsContinuation(await response.json());
 }
 
 export async function fetchReplies(

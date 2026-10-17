@@ -1,9 +1,13 @@
-// Pulled out of `window.ytcfg` / `window.ytInitialData` by the MAIN-world page bridge
-// (see page-bridge.ts) and handed to the isolated content script via a DOM CustomEvent.
+// Pulled out of `window.ytcfg` by the MAIN-world page bridge (see
+// youtube-page-bridge.content.ts) and handed to the isolated content script via a DOM
+// CustomEvent. Deliberately doesn't carry a comments continuation: unlike the API key and
+// request context (stable for the whole session), the first video's continuation would go
+// stale the moment the user navigates to another video within the same page — see
+// comments-api.ts's fetchInitialCommentsContinuation, which fetches it fresh per video
+// instead.
 export interface BridgeData {
   apiKey: string;
   context: unknown;
-  initialContinuation: string | null;
 }
 
 interface SortMenuItem {
@@ -41,9 +45,10 @@ function findFirst<T>(value: unknown, key: string): T | undefined {
 }
 
 // The comments panel's sort menu ("Top" / "Newest") carries the continuation token that
-// kicks off the very first batch of top-level comments.
-export function findInitialCommentsContinuation(ytInitialData: unknown): string | null {
-  const menu = findFirst<{ subMenuItems?: SortMenuItem[] }>(ytInitialData, "sortFilterSubMenuRenderer");
+// kicks off the very first batch of top-level comments. Works against both
+// `window.ytInitialData` and a raw `/youtubei/v1/next` response — same shape either way.
+export function findInitialCommentsContinuation(nextResponse: unknown): string | null {
+  const menu = findFirst<{ subMenuItems?: SortMenuItem[] }>(nextResponse, "sortFilterSubMenuRenderer");
   const items = menu?.subMenuItems ?? [];
   const selected = items.find((item) => item.selected) ?? items[0];
 
