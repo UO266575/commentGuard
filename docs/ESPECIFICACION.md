@@ -52,6 +52,7 @@ La extensión no usa la API oficial de YouTube: lee los comentarios que la propi
 - **Límite inicial:** los 300 comentarios principales más relevantes por vídeo, con un botón de "Cargar más". Muchos vídeos virales tienen miles de comentarios, y cada comentario clasificado consume cuota del plan.
 - Las respuestas se piden solo cuando el usuario despliega un comentario, y no se clasifican.
 - **Riesgo:** esa llamada interna no es pública. YouTube puede cambiarla sin aviso y la extensión dejaría de cargar comentarios hasta actualizarla. Conviene aislar esta parte en un módulo propio y tener una prueba que avise cuando deje de funcionar.
+- **Vídeo siguiente sin recargar la página:** YouTube es una SPA, así que el token de comentarios del primer vídeo cargado (`window.ytInitialData`) no se actualiza al navegar a otro vídeo sin recargar — se queda congelado en el primero para siempre. La extensión pide ese token directamente al endpoint de comentarios indicando el ID del vídeo concreto (igual que hace la propia página al cargar), en vez de confiar en ese dato de la página. La detección de que el usuario cambió de vídeo usa el evento `yt-navigate-finish` que dispara YouTube, no la API de navegación del navegador: esta última no se recibe de forma fiable desde el contexto aislado en el que corre el content script.
 
 ## Clasificación con Jev
 
@@ -60,10 +61,11 @@ La extensión envía los comentarios al servidor propio, y es el servidor el que
 - **Qué es Jev:** un modelo de TypeSafe AI, en acceso anticipado desde el 15 de septiembre de 2026. No genera texto: recibe un estado y preguntas tipadas y devuelve respuestas estructuradas con probabilidades ([Wikipedia](<https://en.wikipedia.org/wiki/Jev_(AI_model)>)).
 - **Llamada:** `POST https://api.typesafe.ai/v1/systemone` con una pregunta de tipo *choice* cuyas seis opciones son las categorías con su definición. El estado lleva el texto del comentario y el título del vídeo. La respuesta trae la categoría elegida, la probabilidad de cada una y una confianza de 0 a 1 ([documentación](https://docs.typesafe.ai/api)).
 - **Versión fija:** usar una versión concreta (hoy `jev-1.13.0`) en vez de `jev-latest`, para que el umbral del 50 % no cambie de significado sin aviso.
+- **Versión de los criterios:** además de la versión del modelo, se guarda una versión numérica de las instrucciones y los criterios de cada categoría (`jev-1.13.0+c2`, por ejemplo). Si se cambia el texto de los criterios, basta con subir ese número: cualquier entrada de la caché con una versión distinta se trata como no cacheada y se vuelve a clasificar, en vez de quedarse hasta 60 días con una categoría decidida por criterios que ya no aplican.
 - **Coste orientativo:** unos 0,042 USD por millón de tokens de entrada y salida gratuita, según el fabricante ([EkLine](https://ekline.io/blog/what-is-jev-ai)). Con unos 350 tokens por comentario, 1.000 comentarios cuestan alrededor de 1,5 céntimos.
 - **Latencia:** entre 70 y 500 ms por llamada según el fabricante. Las pestañas se van llenando a medida que llegan los resultados.
 - **Errores:** reintentos con espera creciente ante los códigos 429 y 529; si un comentario no se puede clasificar, va a Sin clasificar.
-- **Idiomas:** cualquiera. TypeSafe no publica qué idiomas soporta, así que hay que validar la precisión en español e inglés con una muestra real antes de lanzar.
+- **Idiomas:** cualquiera. TypeSafe no publica qué idiomas soporta, así que hay que validar la precisión en español e inglés con una muestra real antes de lanzar. Las instrucciones ya piden explícitamente juzgar el sentido y no la palabra literal, con ejemplos de jerga española ("pedazo serie", "qué crack", "vaya truño"), porque Jev clasificaba mal expresiones coloquiales tomándolas al pie de la letra.
 
 Ejemplo de petición y respuesta:
 
@@ -132,7 +134,7 @@ Se descartan Java Spring y Go para el servidor porque no aportan rendimiento apr
 
 ## Repositorio y commits
 
-El código vive en [UO266575/commentClassificator](https://github.com/UO266575/commentClassificator), y Claude Code sube el trabajo en commits pequeños y bien documentados.
+El código vive en [UO266575/commentGuard](https://github.com/UO266575/commentGuard), y Claude Code sube el trabajo en commits pequeños y bien documentados. `main` es la rama por defecto del repositorio y la que despliega Render.
 
 - **Formato:** [Conventional Commits](https://www.conventionalcommits.org/es/v1.0.0/). Tipos: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`. Ámbito según el paquete: `extension`, `server` o `shared`.
 - **Idioma:** mensajes en español.
